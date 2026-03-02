@@ -9,6 +9,66 @@
       },
       "Hello": {
         "$path": "src/ReplicatedStorage/Hello.server.lua"
+      },
+      "Hello_1": {
+        "$path": "src/ReplicatedStorage/Hello_1.server.lua"
+      },
+      "Remotes": {
+        "$className": "Folder",
+        "BattleRequest": {
+          "$className": "RemoteEvent"
+        },
+        "BattleUpdate": {
+          "$className": "RemoteEvent"
+        },
+        "GetTrainerData": {
+          "$className": "RemoteFunction"
+        },
+        "BattleAnimation": {
+          "$className": "RemoteEvent"
+        },
+        "HealComplete": {
+          "$className": "RemoteEvent"
+        }
+      },
+      "BrainrotModels": {
+        "$className": "Folder",
+        "chimpanzini_bananini": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Size": [2, 3, 1.5],
+              "Anchored": true,
+              "Color": [0.8, 0.7, 0.2],
+              "Material": "SmoothPlastic"
+            }
+          }
+        },
+        "sigma_skibidi": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Size": [2, 3, 1.5],
+              "Anchored": true,
+              "Color": [0.2, 0.6, 0.9],
+              "Material": "SmoothPlastic"
+            }
+          }
+        },
+        "rizzlord_gpt": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Size": [2, 3, 1.5],
+              "Anchored": true,
+              "Color": [0.6, 0.2, 0.8],
+              "Material": "SmoothPlastic"
+            }
+          }
+        }
       }
     },
 
@@ -58,9 +118,9 @@
         "$properties": {
           "Anchored": true,
           "Color": [
-            0.38823,
-            0.37254,
-            0.38823
+            0.2,
+            0.6,
+            0.2
           ],
           "Locked": true,
           "Position": [
@@ -69,10 +129,597 @@
             0
           ],
           "Size": [
-            512,
+            1024,
             20,
-            512
-          ]
+            1024
+          ],
+          "Material": "Grass"
+        }
+      },
+      "BrainrotCenter": {
+        "$className": "Model",
+        "Floor": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              30,
+              1,
+              24
+            ],
+            "Position": [
+              80,
+              0,
+              0
+            ],
+            "Color": [
+              0.878,
+              0.878,
+              0.878
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "WallBack": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              30,
+              14,
+              1
+            ],
+            "Position": [
+              80,
+              7,
+              -12
+            ],
+            "Color": [
+              0.9,
+              0.9,
+              0.95
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "WallFrontLeft": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              14,
+              1
+            ],
+            "Position": [
+              70,
+              7,
+              12
+            ],
+            "Color": [
+              0.9,
+              0.9,
+              0.95
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "WallFrontRight": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              10,
+              14,
+              1
+            ],
+            "Position": [
+              90,
+              7,
+              12
+            ],
+            "Color": [
+              0.9,
+              0.9,
+              0.95
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "WallLeft": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              14,
+              24
+            ],
+            "Position": [
+              65,
+              7,
+              0
+            ],
+            "Color": [
+              0.9,
+              0.9,
+              0.95
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "WallRight": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              1,
+              14,
+              24
+            ],
+            "Position": [
+              95,
+              7,
+              0
+            ],
+            "Color": [
+              0.9,
+              0.9,
+              0.95
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "Counter": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              20,
+              3,
+              3
+            ],
+            "Position": [
+              80,
+              2,
+              4
+            ],
+            "Color": [
+              0.8,
+              0.4,
+              0.4
+            ],
+            "Material": "SmoothPlastic"
+          }
+        },
+        "Nurse": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              2,
+              4,
+              2
+            ],
+            "Position": [
+              80,
+              4,
+              2
+            ],
+            "Color": [
+              1,
+              0.6,
+              0.8
+            ],
+            "Material": "SmoothPlastic",
+            "Name": "Nurse"
+          }
+        },
+        "HealBox": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              3,
+              2,
+              3
+            ],
+            "Position": [
+              80,
+              3,
+              -2
+            ],
+            "Color": [
+              0.8,
+              1,
+              0.8
+            ],
+            "Material": "Neon",
+            "Name": "HealBox"
+          }
+        },
+        "Spawn": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Transparency": 1,
+            "CanCollide": false,
+            "Size": [
+              2,
+              1,
+              2
+            ],
+            "Position": [
+              80,
+              1,
+              8
+            ],
+            "Name": "Spawn"
+          }
+        }
+      },
+      "StarterTown": {
+        "$className": "Model",
+        "PathMain": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              6,
+              1,
+              70
+            ],
+            "Position": [
+              0,
+              0,
+              0
+            ],
+            "Color": [
+              0.8,
+              0.8,
+              0.6
+            ],
+            "Material": "Cobblestone"
+          }
+        },
+        "PathCross": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              70,
+              1,
+              6
+            ],
+            "Position": [
+              0,
+              0,
+              -10
+            ],
+            "Color": [
+              0.8,
+              0.8,
+              0.6
+            ],
+            "Material": "Cobblestone"
+          }
+        },
+        "FlowerPath": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              20,
+              1,
+              4
+            ],
+            "Position": [
+              25,
+              0,
+              5
+            ],
+            "Color": [
+              0.8,
+              0.8,
+              0.6
+            ],
+            "Material": "Cobblestone"
+          }
+        },
+        "HouseTopLeft": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                6,
+                10
+              ],
+              "Position": [
+                -25,
+                3,
+                -25
+              ],
+              "Color": [
+                0.85,
+                0.85,
+                0.9
+              ],
+              "Material": "SmoothPlastic"
+            }
+          },
+          "Roof": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                2,
+                10
+              ],
+              "Position": [
+                -25,
+                7,
+                -25
+              ],
+              "Color": [
+                0.9,
+                0.4,
+                0.3
+              ],
+              "Material": "SmoothPlastic"
+            }
+          }
+        },
+        "HouseTopRight": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                6,
+                10
+              ],
+              "Position": [
+                25,
+                3,
+                -25
+              ],
+              "Color": [
+                0.85,
+                0.85,
+                0.9
+              ],
+              "Material": "SmoothPlastic"
+            }
+          },
+          "Roof": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                2,
+                10
+              ],
+              "Position": [
+                25,
+                7,
+                -25
+              ],
+              "Color": [
+                0.9,
+                0.4,
+                0.3
+              ],
+              "Material": "SmoothPlastic"
+            }
+          }
+        },
+        "HouseBottomLeft": {
+          "$className": "Model",
+          "Body": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                6,
+                10
+              ],
+              "Position": [
+                -25,
+                3,
+                15
+              ],
+              "Color": [
+                0.85,
+                0.85,
+                0.9
+              ],
+              "Material": "SmoothPlastic"
+            }
+          },
+          "Roof": {
+            "$className": "Part",
+            "$properties": {
+              "Anchored": true,
+              "Size": [
+                14,
+                2,
+                10
+              ],
+              "Position": [
+                -25,
+                7,
+                15
+              ],
+              "Color": [
+                0.9,
+                0.4,
+                0.3
+              ],
+              "Material": "SmoothPlastic"
+            }
+          }
+        },
+        "Pond": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              18,
+              1,
+              14
+            ],
+            "Position": [
+              0,
+              0.5,
+              32
+            ],
+            "Color": [
+              0.2,
+              0.5,
+              0.9
+            ],
+            "Material": "Water"
+          }
+        },
+        "FlowerBed": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              14,
+              1,
+              10
+            ],
+            "Position": [
+              25,
+              0.5,
+              15
+            ],
+            "Color": [
+              0.5,
+              0.8,
+              0.5
+            ],
+            "Material": "Grass"
+          }
+        },
+        "TreeRingNorth": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              120,
+              10,
+              4
+            ],
+            "Position": [
+              0,
+              5,
+              -40
+            ],
+            "Color": [
+              0.1,
+              0.5,
+              0.2
+            ],
+            "Material": "Grass"
+          }
+        },
+        "TreeRingSouthLeft": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              40,
+              10,
+              4
+            ],
+            "Position": [
+              -40,
+              5,
+              40
+            ],
+            "Color": [
+              0.1,
+              0.5,
+              0.2
+            ],
+            "Material": "Grass"
+          }
+        },
+        "TreeRingSouthRight": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              40,
+              10,
+              4
+            ],
+            "Position": [
+              40,
+              5,
+              40
+            ],
+            "Color": [
+              0.1,
+              0.5,
+              0.2
+            ],
+            "Material": "Grass"
+          }
+        },
+        "TreeRingWest": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              4,
+              10,
+              80
+            ],
+            "Position": [
+              -40,
+              5,
+              0
+            ],
+            "Color": [
+              0.1,
+              0.5,
+              0.2
+            ],
+            "Material": "Grass"
+          }
+        },
+        "TreeRingEast": {
+          "$className": "Part",
+          "$properties": {
+            "Anchored": true,
+            "Size": [
+              4,
+              10,
+              80
+            ],
+            "Position": [
+              40,
+              5,
+              0
+            ],
+            "Color": [
+              0.1,
+              0.5,
+              0.2
+            ],
+            "Material": "Grass"
+          }
         }
       }
     },
