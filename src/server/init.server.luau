@@ -12,6 +12,7 @@ local BattleUpdate: RemoteEvent = RemotesFolder:WaitForChild("BattleUpdate") :: 
 local GetTrainerData: RemoteFunction = RemotesFolder:WaitForChild("GetTrainerData") :: RemoteFunction
 local BattleAnimation: RemoteEvent = RemotesFolder:WaitForChild("BattleAnimation") :: RemoteEvent
 local HealComplete: RemoteEvent = RemotesFolder:WaitForChild("HealComplete") :: RemoteEvent
+local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: RemoteEvent
 
 type BrainrotInstance = {
 	id: string,
@@ -424,10 +425,12 @@ local function createTrainerSnapshot(player: Player)
 
 	local snapshotBag = {}
 	for i, entry in ipairs(data.bag) do
+		local itemDef = Items.getById(entry.id)
 		snapshotBag[i] = {
 			id = entry.id,
 			displayName = entry.displayName,
 			quantity = entry.quantity,
+			holdable = itemDef and (itemDef.holdable == true) or false,
 		}
 	end
 
@@ -578,6 +581,30 @@ local function setupBrainrotCenter()
 		HealComplete:FireClient(player)
 	end)
 end
+
+SetHeldItem.OnServerEvent:Connect(function(player: Player, partyIndex: number, itemId: string?)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+
+	local mon = data.party[partyIndex]
+	if not mon then
+		return
+	end
+
+	if not itemId or itemId == "" then
+		mon.heldItemId = nil
+		return
+	end
+
+	local itemDef = Items.getById(itemId)
+	if not itemDef or not itemDef.holdable then
+		return
+	end
+
+	mon.heldItemId = itemId
+end)
 
 Players.PlayerAdded:Connect(function(player)
 	local starter = Brainrots.createInstance("chimpanzini_bananini", 1)

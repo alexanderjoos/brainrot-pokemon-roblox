@@ -12,6 +12,7 @@ local BattleUpdate: RemoteEvent = RemotesFolder:WaitForChild("BattleUpdate") :: 
 local GetTrainerData: RemoteFunction = RemotesFolder:WaitForChild("GetTrainerData") :: RemoteFunction
 local BattleAnimation: RemoteEvent = RemotesFolder:WaitForChild("BattleAnimation") :: RemoteEvent
 local HealComplete: RemoteEvent = RemotesFolder:WaitForChild("HealComplete") :: RemoteEvent
+local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: RemoteEvent
 
 local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels")
 
@@ -613,8 +614,8 @@ local function createMenuGui()
 
 	local brainrotDetail = Instance.new("TextLabel")
 	brainrotDetail.Name = "BrainrotDetail"
-	brainrotDetail.Size = UDim2.new(0.5, 0, 1, 0)
-	brainrotDetail.Position = UDim2.new(0.48, 0, 0, 0)
+	brainrotDetail.Size = UDim2.new(0.5, 0, 1, -40)
+	brainrotDetail.Position = UDim2.new(0.48, 0, 0, 40)
 	brainrotDetail.BackgroundTransparency = 1
 	brainrotDetail.TextColor3 = Color3.new(1, 1, 1)
 	brainrotDetail.Font = Enum.Font.Gotham
@@ -624,6 +625,33 @@ local function createMenuGui()
 	brainrotDetail.TextWrapped = true
 	brainrotDetail.Parent = brainrotsFrame
 
+	local heldItemLabel = Instance.new("TextLabel")
+	heldItemLabel.Name = "HeldItemLabel"
+	heldItemLabel.Size = UDim2.new(0.3, 0, 0, 24)
+	heldItemLabel.Position = UDim2.new(0.48, 0, 0, 4)
+	heldItemLabel.BackgroundTransparency = 1
+	heldItemLabel.TextColor3 = Color3.new(1, 1, 1)
+	heldItemLabel.Font = Enum.Font.GothamBold
+	heldItemLabel.TextSize = 16
+	heldItemLabel.TextXAlignment = Enum.TextXAlignment.Left
+	heldItemLabel.Text = "Held: (none)"
+	heldItemLabel.Parent = brainrotsFrame
+
+	local setHeldButton = Instance.new("TextButton")
+	setHeldButton.Name = "SetHeldButton"
+	setHeldButton.Size = UDim2.new(0, 120, 0, 24)
+	setHeldButton.Position = UDim2.new(0.8, -120, 0, 4)
+	setHeldButton.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+	setHeldButton.TextColor3 = Color3.new(1, 1, 1)
+	setHeldButton.Font = Enum.Font.GothamBold
+	setHeldButton.TextSize = 14
+	setHeldButton.Text = "Set held item"
+	setHeldButton.Parent = brainrotsFrame
+
+	local setHeldCorner = Instance.new("UICorner")
+	setHeldCorner.CornerRadius = UDim.new(0, 6)
+	setHeldCorner.Parent = setHeldButton
+
 	local function hideAllContent()
 		bagList.Visible = false
 		trainerFrame.Visible = false
@@ -631,6 +659,8 @@ local function createMenuGui()
 		settingsFrame.Visible = false
 		brainrotsFrame.Visible = false
 	end
+
+	local currentSelectedPartyIndex: number? = nil
 
 	local function refreshTrainerData()
 		local data = GetTrainerData:InvokeServer()
@@ -789,6 +819,10 @@ local function createMenuGui()
 						movesText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
 					end
 
+					currentSelectedPartyIndex = index
+					local heldText = mon.heldItemId and ("Held: " .. tostring(mon.heldItemId)) or "Held: (none)"
+					heldItemLabel.Text = heldText
+
 					brainrotDetail.Text = string.format(
 						"%s Lv.%d\nHP: %d/%d\nATK: %d  DEF: %d  SPD: %d\n\nMoves:\n%s",
 						mon.displayName,
@@ -809,6 +843,9 @@ local function createMenuGui()
 				for _, move in ipairs(first.moves or {}) do
 					movesText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
 				end
+				currentSelectedPartyIndex = 1
+				local heldText = first.heldItemId and ("Held: " .. tostring(first.heldItemId)) or "Held: (none)"
+				heldItemLabel.Text = heldText
 				brainrotDetail.Text = string.format(
 					"%s Lv.%d\nHP: %d/%d\nATK: %d  DEF: %d  SPD: %d\n\nMoves:\n%s",
 					first.displayName,
@@ -822,6 +859,8 @@ local function createMenuGui()
 				)
 			else
 				brainrotDetail.Text = "No brainrots in your party yet."
+				currentSelectedPartyIndex = nil
+				heldItemLabel.Text = "Held: (none)"
 			end
 		end
 
@@ -880,6 +919,84 @@ local function createMenuGui()
 
 	brainrotsButton.MouseButton1Click:Connect(function()
 		openSection("brainrots")
+	end)
+
+	setHeldButton.MouseButton1Click:Connect(function()
+		local data = GetTrainerData:InvokeServer()
+		if not data or not currentSelectedPartyIndex then
+			return
+		end
+
+		local holdableEntries = {}
+		for _, entry in ipairs(data.bag or {}) do
+			if entry.holdable then
+				table.insert(holdableEntries, entry)
+			end
+		end
+
+		if #holdableEntries == 0 then
+			return
+		end
+
+		local overlay = Instance.new("ScreenGui")
+		overlay.Name = "HeldItemChooser"
+		overlay.ResetOnSpawn = false
+		overlay.IgnoreGuiInset = true
+		overlay.Parent = PlayerGui
+
+		local panel = Instance.new("Frame")
+		panel.Size = UDim2.new(0, 220, 0, 30 + #holdableEntries * 24)
+		panel.AnchorPoint = Vector2.new(0.5, 0.5)
+		panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+		panel.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+		panel.Parent = overlay
+
+		local panelCorner = Instance.new("UICorner")
+		panelCorner.CornerRadius = UDim.new(0, 8)
+		panelCorner.Parent = panel
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, -10, 0, 24)
+		title.Position = UDim2.new(0, 5, 0, 3)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.new(1, 1, 1)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 16
+		title.Text = "Choose held item"
+		title.Parent = panel
+
+		local listFrame = Instance.new("Frame")
+		listFrame.Size = UDim2.new(1, -10, 1, -30)
+		listFrame.Position = UDim2.new(0, 5, 0, 28)
+		listFrame.BackgroundTransparency = 1
+		listFrame.Parent = panel
+
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.FillDirection = Enum.FillDirection.Vertical
+		listLayout.Padding = UDim.new(0, 4)
+		listLayout.Parent = listFrame
+
+		for _, entry in ipairs(holdableEntries) do
+			local b = Instance.new("TextButton")
+			b.Size = UDim2.new(1, 0, 0, 22)
+			b.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+			b.TextColor3 = Color3.new(1, 1, 1)
+			b.Font = Enum.Font.Gotham
+			b.TextSize = 14
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			b.Text = string.format(" %s x%d", entry.displayName, entry.quantity or 1)
+			b.Parent = listFrame
+
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 6)
+			c.Parent = b
+
+			b.MouseButton1Click:Connect(function()
+				SetHeldItem:FireServer(currentSelectedPartyIndex, entry.id)
+				overlay:Destroy()
+				refreshTrainerData()
+			end)
+		end
 	end)
 end
 

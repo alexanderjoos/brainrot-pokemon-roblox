@@ -3,12 +3,14 @@ local Items = {
 		id = "brainrot_treat",
 		displayName = "Brainrot Treat",
 		description = "A tasty snack that your brainrots love. Pure enrichment.",
+		holdable = true,
 	},
 
 	["capture_chip"] = {
 		id = "capture_chip",
 		displayName = "Capture Chip",
 		description = "A high-tech chip that slightly improves capture chances in future updates.",
+		holdable = true,
 	},
 
 	["energy_drink"] = {
