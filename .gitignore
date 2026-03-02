@@ -1,8 +1,24 @@
-# Project place file
+## Roblox place files
 /my-new-game.rbxlx
 
-# Roblox Studio lock files
+## Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
 
+## Generated source maps
 sourcemap.json
+
+## OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+## Package managers / tooling
+node_modules/
+packages-lock.json
+pnpm-lock.yaml
+package-lock.json
+dist/
+build/
