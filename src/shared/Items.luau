@@ -4,6 +4,7 @@ local Items = {
 		displayName = "Brainrot Treat",
 		description = "A tasty snack that your brainrots love. Pure enrichment.",
 		holdable = true,
+		usableInBattle = false,
 	},
 
 	["capture_chip"] = {
@@ -11,18 +12,21 @@ local Items = {
 		displayName = "Capture Chip",
 		description = "A high-tech chip that slightly improves capture chances in future updates.",
 		holdable = true,
+		usableInBattle = false,
 	},
 
 	["energy_drink"] = {
 		id = "energy_drink",
 		displayName = "Energy Drink",
 		description = "Illegally caffeinated. Restores a little HP between battles (future feature).",
+		usableInBattle = true,
 	},
 
 	["troppi_ball"] = {
 		id = "troppi_ball",
 		displayName = "Troppi-ball",
 		description = "Special ball used to capture wild brainrots.",
+		usableInBattle = true,
 	},
 }
 

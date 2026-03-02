@@ -244,6 +244,10 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 	local enemyMon = battle.enemyBrainrot
 
 	if action == "run" then
+		if (battle :: any).isTrainerBattle then
+			sendBattleUpdate(player, battle, "You can't run from a trainer battle!")
+			return
+		end
 		endBattleForPlayer(player, "finished")
 		sendBattleUpdate(player, battle, "You ran away!")
 		return
@@ -313,6 +317,47 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				end
 				sendBattleUpdate(player, battle, msg)
 			end
+		end
+
+		return
+	end
+
+	if action == "useItem" and moveId then
+		local data = playerData[player]
+		if not data then
+			return
+		end
+
+		local itemId = moveId
+		local entry = getBagItem(data, itemId)
+		local itemDef = Items.getById(itemId)
+		if not entry or not itemDef or not itemDef.usableInBattle then
+			return
+		end
+
+		entry.quantity -= 1
+		if entry.quantity <= 0 then
+			for index, e in ipairs(data.bag) do
+				if e == entry then
+					table.remove(data.bag, index)
+					break
+				end
+			end
+		end
+
+		if itemId == "energy_drink" then
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				local originalSpeed = humanoid.WalkSpeed
+				humanoid.WalkSpeed = originalSpeed * 1.5
+				task.delay(60, function()
+					if humanoid then
+						humanoid.WalkSpeed = originalSpeed
+					end
+				end)
+			end
+			sendBattleUpdate(player, battle, "You used an Energy Drink! Your speed increased for a while.")
 		end
 
 		return
@@ -431,6 +476,7 @@ local function createTrainerSnapshot(player: Player)
 			displayName = entry.displayName,
 			quantity = entry.quantity,
 			holdable = itemDef and (itemDef.holdable == true) or false,
+			usableInBattle = itemDef and (itemDef.usableInBattle == true) or false,
 		}
 	end
 
