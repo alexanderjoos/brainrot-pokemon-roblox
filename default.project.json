@@ -32,6 +32,12 @@
         },
         "SetHeldItem": {
           "$className": "RemoteEvent"
+        },
+        "SetLeader": {
+          "$className": "RemoteEvent"
+        },
+        "ReleaseBrainrot": {
+          "$className": "RemoteEvent"
         }
       },
       "BrainrotModels": {

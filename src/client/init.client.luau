@@ -13,6 +13,8 @@ local GetTrainerData: RemoteFunction = RemotesFolder:WaitForChild("GetTrainerDat
 local BattleAnimation: RemoteEvent = RemotesFolder:WaitForChild("BattleAnimation") :: RemoteEvent
 local HealComplete: RemoteEvent = RemotesFolder:WaitForChild("HealComplete") :: RemoteEvent
 local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: RemoteEvent
+local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: RemoteEvent
+local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
 
 local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels")
 
@@ -826,6 +828,38 @@ local function createMenuGui()
 	setHeldCorner.CornerRadius = UDim.new(0, 6)
 	setHeldCorner.Parent = setHeldButton
 
+	local setLeaderButton = Instance.new("TextButton")
+	setLeaderButton.Name = "SetLeaderButton"
+	setLeaderButton.Size = UDim2.new(0, 100, 0, 24)
+	setLeaderButton.Position = UDim2.new(0.48, 0, 0, 32)
+	setLeaderButton.BackgroundColor3 = Color3.fromRGB(60, 40, 40)
+	setLeaderButton.TextColor3 = Color3.new(1, 1, 1)
+	setLeaderButton.Font = Enum.Font.GothamBold
+	setLeaderButton.TextSize = 14
+	setLeaderButton.TextXAlignment = Enum.TextXAlignment.Left
+	setLeaderButton.Text = "Set leader"
+	setLeaderButton.Parent = brainrotsFrame
+
+	local setLeaderCorner = Instance.new("UICorner")
+	setLeaderCorner.CornerRadius = UDim.new(0, 6)
+	setLeaderCorner.Parent = setLeaderButton
+
+	local releaseButton = Instance.new("TextButton")
+	releaseButton.Name = "ReleaseButton"
+	releaseButton.Size = UDim2.new(0, 100, 0, 24)
+	releaseButton.Position = UDim2.new(0.48, 0, 0, 60)
+	releaseButton.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+	releaseButton.TextColor3 = Color3.new(1, 1, 1)
+	releaseButton.Font = Enum.Font.GothamBold
+	releaseButton.TextSize = 14
+	releaseButton.TextXAlignment = Enum.TextXAlignment.Left
+	releaseButton.Text = "Release"
+	releaseButton.Parent = brainrotsFrame
+
+	local releaseCorner = Instance.new("UICorner")
+	releaseCorner.CornerRadius = UDim.new(0, 6)
+	releaseCorner.Parent = releaseButton
+
 	local function hideAllContent()
 		bagList.Visible = false
 		trainerFrame.Visible = false
@@ -933,10 +967,15 @@ local function createMenuGui()
 			partyLayout.Parent = partyList
 
 			local party = data.party or {}
+			local leaderIndex = data.leaderIndex or 1
 			for index, mon in ipairs(party) do
 				local slot = Instance.new("TextButton")
 				slot.Size = UDim2.new(1, 0, 0, 60)
-				slot.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+				if mon.hp <= 0 then
+					slot.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
+				else
+					slot.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+				end
 				slot.Text = ""
 				slot.AutoButtonColor = true
 
@@ -972,7 +1011,8 @@ local function createMenuGui()
 				nameLabel.Font = Enum.Font.GothamBold
 				nameLabel.TextSize = 16
 				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-				nameLabel.Text = string.format("%s  Lv.%d", mon.displayName, mon.level)
+				local leaderMark = (index == leaderIndex) and " ★" or ""
+				nameLabel.Text = string.format("%s  Lv.%d%s", mon.displayName, mon.level, leaderMark)
 				nameLabel.Parent = infoFrame
 
 				local hpLabel = Instance.new("TextLabel")
@@ -1171,6 +1211,23 @@ local function createMenuGui()
 				refreshTrainerData()
 			end)
 		end
+	end)
+
+	setLeaderButton.MouseButton1Click:Connect(function()
+		if not currentSelectedPartyIndex then
+			return
+		end
+		SetLeader:FireServer(currentSelectedPartyIndex)
+		refreshTrainerData()
+	end)
+
+	releaseButton.MouseButton1Click:Connect(function()
+		if not currentSelectedPartyIndex then
+			return
+		end
+		ReleaseBrainrot:FireServer(currentSelectedPartyIndex)
+		currentSelectedPartyIndex = nil
+		refreshTrainerData()
 	end)
 end
 

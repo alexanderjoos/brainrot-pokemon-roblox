@@ -28,6 +28,13 @@ local Items = {
 		description = "Special ball used to capture wild brainrots.",
 		usableInBattle = true,
 	},
+
+	["henny"] = {
+		id = "henny",
+		displayName = "Henny",
+		description = "Revives a fainted brainrot with half of its max HP.",
+		usableInBattle = true,
+	},
 }
 
 local ItemList = {}

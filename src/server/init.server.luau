@@ -13,6 +13,8 @@ local GetTrainerData: RemoteFunction = RemotesFolder:WaitForChild("GetTrainerDat
 local BattleAnimation: RemoteEvent = RemotesFolder:WaitForChild("BattleAnimation") :: RemoteEvent
 local HealComplete: RemoteEvent = RemotesFolder:WaitForChild("HealComplete") :: RemoteEvent
 local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: RemoteEvent
+local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: RemoteEvent
+local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
 
 type BrainrotInstance = {
 	id: string,
@@ -213,6 +215,16 @@ local function startWildEncounter(player: Player)
 	end
 
 	local starter = data.party[data.activeIndex]
+	if not starter or starter.hp <= 0 then
+		starter = nil
+		for i, mon in ipairs(data.party) do
+			if mon.hp > 0 then
+				starter = mon
+				data.activeIndex = i
+				break
+			end
+		end
+	end
 	if not starter then
 		return
 	end
@@ -408,6 +420,19 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			else
 				sendBattleUpdate(player, battle, "You used an Energy Drink, but nothing happened.")
 			end
+		elseif itemId == "henny" then
+			if playerMon.hp > 0 then
+				sendBattleUpdate(player, battle, "You used Henny, but your brainrot is already conscious.")
+			else
+				playerMon.hp = math.max(1, math.floor(playerMon.maxHP / 2))
+				sendBattleUpdate(
+					player,
+					battle,
+					"You poured Henny on "
+						.. playerMon.displayName
+						.. "! It revived with half HP."
+				)
+			end
 		end
 
 		enemyRespond(player, battle, playerMon, enemyMon)
@@ -543,6 +568,7 @@ local function createTrainerSnapshot(player: Player)
 		bag = snapshotBag,
 		dexSeen = data.dexSeen,
 		dexCaught = data.dexCaught,
+		leaderIndex = data.activeIndex,
 	}
 end
 
@@ -702,6 +728,39 @@ SetHeldItem.OnServerEvent:Connect(function(player: Player, partyIndex: number, i
 	end
 
 	mon.heldItemId = itemId
+end)
+
+SetLeader.OnServerEvent:Connect(function(player: Player, partyIndex: number)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+
+	local mon = data.party[partyIndex]
+	if not mon or mon.hp <= 0 then
+		return
+	end
+
+	data.activeIndex = partyIndex
+end)
+
+ReleaseBrainrot.OnServerEvent:Connect(function(player: Player, partyIndex: number)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+
+	if #data.party <= 1 then
+		return
+	end
+
+	table.remove(data.party, partyIndex)
+
+	if data.activeIndex == partyIndex then
+		data.activeIndex = math.clamp(partyIndex, 1, #data.party)
+	elseif data.activeIndex > partyIndex then
+		data.activeIndex -= 1
+	end
 end)
 
 Players.PlayerAdded:Connect(function(player)
