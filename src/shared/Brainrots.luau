@@ -150,13 +150,19 @@ end
 
 function module.calculateDamage(attacker, defender, move)
 	local power = move.power or 5
+	local level = attacker.level or 1
 	local attack = attacker.attack or 5
 	local defense = defender.defense or 5
 
-	local baseDamage = math.max(1, math.floor((power + attack) - defense / 2))
+	defense = math.max(defense, 1)
+
+	-- Simple level‑scaled physical damage formula
+	local base =
+		(((2 * level) / 5 + 2) * power * attack / defense) / 50
 
 	local variance = math.random(85, 100) / 100
-	local damage = math.floor(baseDamage * variance)
+	local damage = math.floor((base + 2) * variance)
+
 	return math.max(damage, 1)
 end
 
