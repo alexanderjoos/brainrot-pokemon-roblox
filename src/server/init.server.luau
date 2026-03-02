@@ -152,6 +152,50 @@ local function performAttack(attacker: BrainrotInstance, defender: BrainrotInsta
 	return damage, true
 end
 
+local function enemyRespond(player: Player, battle: BattleState, playerMon: BrainrotInstance, enemyMon: BrainrotInstance)
+	if battle.state ~= "ongoing" then
+		return
+	end
+
+	if enemyMon.hp <= 0 then
+		return
+	end
+
+	local enemyMove = chooseEnemyMove(enemyMon)
+	local enemyDamage, enemyHit = performAttack(enemyMon, playerMon, enemyMove)
+
+	if playerMon.hp <= 0 then
+		battle.state = "lost"
+		local data = playerData[player]
+		if data then
+			data.stats.battlesLost += 1
+		end
+		local msg = string.format(
+			"%s used %s and dealt %d damage! Your brainrot fainted!",
+			enemyMon.displayName,
+			enemyMove and enemyMove.name or "an attack",
+			enemyDamage
+		)
+		sendBattleUpdate(player, battle, msg)
+		endBattleForPlayer(player, "lost")
+		return
+	end
+
+	local msg
+	if enemyHit then
+		msg = string.format(
+			"%s used %s and dealt %d damage!",
+			enemyMon.displayName,
+			enemyMove and enemyMove.name or "an attack",
+			enemyDamage
+		)
+	else
+		msg = string.format("%s's attack missed!", enemyMon.displayName)
+	end
+
+	sendBattleUpdate(player, battle, msg)
+end
+
 local function startWildEncounter(player: Player)
 	if activeBattles[player] then
 		return
@@ -348,6 +392,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 		if itemId == "energy_drink" then
 			local character = player.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			local applied = false
 			if humanoid then
 				local originalSpeed = humanoid.WalkSpeed
 				humanoid.WalkSpeed = originalSpeed * 1.5
@@ -356,9 +401,16 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 						humanoid.WalkSpeed = originalSpeed
 					end
 				end)
+				applied = true
 			end
-			sendBattleUpdate(player, battle, "You used an Energy Drink! Your speed increased for a while.")
+			if applied then
+				sendBattleUpdate(player, battle, "You used an Energy Drink! Your speed increased for a while.")
+			else
+				sendBattleUpdate(player, battle, "You used an Energy Drink, but nothing happened.")
+			end
 		end
+
+		enemyRespond(player, battle, playerMon, enemyMon)
 
 		return
 	end
