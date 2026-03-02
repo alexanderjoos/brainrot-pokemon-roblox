@@ -22,8 +22,8 @@ local function createBattleGui()
 	screenGui.ResetOnSpawn = false
 
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.new(1, -40, 0, 220)
-	frame.Position = UDim2.new(0, 20, 1, -240)
+	frame.Size = UDim2.new(1, -40, 0, 260)
+	frame.Position = UDim2.new(0, 20, 1, -280)
 	frame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
 	frame.BackgroundTransparency = 0.2
 	frame.Parent = screenGui
@@ -32,32 +32,62 @@ local function createBattleGui()
 	uiCorner.CornerRadius = UDim.new(0, 8)
 	uiCorner.Parent = frame
 
-	local enemyLabel = Instance.new("TextLabel")
-	enemyLabel.Name = "EnemyLabel"
-	enemyLabel.Size = UDim2.new(1, -20, 0, 30)
-	enemyLabel.Position = UDim2.new(0, 10, 0, 10)
-	enemyLabel.BackgroundTransparency = 1
-	enemyLabel.Font = Enum.Font.GothamBold
-	enemyLabel.TextSize = 20
-	enemyLabel.TextXAlignment = Enum.TextXAlignment.Left
-	enemyLabel.TextColor3 = Color3.new(1, 1, 1)
-	enemyLabel.Parent = frame
+	local playerPanel = Instance.new("Frame")
+	playerPanel.Name = "PlayerPanel"
+	playerPanel.Size = UDim2.new(0.48, -5, 0, 80)
+	playerPanel.Position = UDim2.new(0, 10, 0, 10)
+	playerPanel.BackgroundTransparency = 1
+	playerPanel.Parent = frame
 
-	local playerLabel = Instance.new("TextLabel")
-	playerLabel.Name = "PlayerLabel"
-	playerLabel.Size = UDim2.new(1, -20, 0, 30)
-	playerLabel.Position = UDim2.new(0, 10, 0, 45)
-	playerLabel.BackgroundTransparency = 1
-	playerLabel.Font = Enum.Font.GothamBold
-	playerLabel.TextSize = 20
-	playerLabel.TextXAlignment = Enum.TextXAlignment.Left
-	playerLabel.TextColor3 = Color3.new(1, 1, 1)
-	playerLabel.Parent = frame
+	local enemyPanel = Instance.new("Frame")
+	enemyPanel.Name = "EnemyPanel"
+	enemyPanel.Size = UDim2.new(0.48, -5, 0, 80)
+	enemyPanel.Position = UDim2.new(0.52, 0, 0, 10)
+	enemyPanel.BackgroundTransparency = 1
+	enemyPanel.Parent = frame
+
+	local function createDiagLabels(parent: Frame, prefix: string)
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = prefix .. "NameLabel"
+		nameLabel.Size = UDim2.new(1, 0, 0, 22)
+		nameLabel.Position = UDim2.new(0, 0, 0, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Font = Enum.Font.GothamBold
+		nameLabel.TextSize = 18
+		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		nameLabel.TextColor3 = Color3.new(1, 1, 1)
+		nameLabel.Parent = parent
+
+		local hpLabel = Instance.new("TextLabel")
+		hpLabel.Name = prefix .. "HPLabel"
+		hpLabel.Size = UDim2.new(1, 0, 0, 20)
+		hpLabel.Position = UDim2.new(0, 0, 0, 22)
+		hpLabel.BackgroundTransparency = 1
+		hpLabel.Font = Enum.Font.Gotham
+		hpLabel.TextSize = 14
+		hpLabel.TextXAlignment = Enum.TextXAlignment.Left
+		hpLabel.TextColor3 = Color3.fromRGB(160, 240, 160)
+		hpLabel.Parent = parent
+
+		local statusLabel = Instance.new("TextLabel")
+		statusLabel.Name = prefix .. "StatusLabel"
+		statusLabel.Size = UDim2.new(1, 0, 0, 18)
+		statusLabel.Position = UDim2.new(0, 0, 0, 42)
+		statusLabel.BackgroundTransparency = 1
+		statusLabel.Font = Enum.Font.Gotham
+		statusLabel.TextSize = 14
+		statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+		statusLabel.TextColor3 = Color3.new(0.8, 0.8, 1)
+		statusLabel.Parent = parent
+	end
+
+	createDiagLabels(playerPanel, "Player")
+	createDiagLabels(enemyPanel, "Enemy")
 
 	local messageLabel = Instance.new("TextLabel")
 	messageLabel.Name = "MessageLabel"
-	messageLabel.Size = UDim2.new(1, -20, 0, 50)
-	messageLabel.Position = UDim2.new(0, 10, 0, 80)
+	messageLabel.Size = UDim2.new(1, -20, 0, 40)
+	messageLabel.Position = UDim2.new(0, 10, 0, 95)
 	messageLabel.BackgroundTransparency = 1
 	messageLabel.Font = Enum.Font.Gotham
 	messageLabel.TextSize = 18
@@ -67,24 +97,28 @@ local function createBattleGui()
 	messageLabel.TextColor3 = Color3.new(1, 1, 1)
 	messageLabel.Parent = frame
 
-	local buttonContainer = Instance.new("Frame")
-	buttonContainer.Name = "ButtonContainer"
-	buttonContainer.Size = UDim2.new(1, -20, 0, 60)
-	buttonContainer.Position = UDim2.new(0, 10, 1, -70)
-	buttonContainer.BackgroundTransparency = 1
-	buttonContainer.Parent = frame
+	local interactFrame = Instance.new("Frame")
+	interactFrame.Name = "InteractFrame"
+	interactFrame.Size = UDim2.new(1, -20, 0, 80)
+	interactFrame.Position = UDim2.new(0, 10, 1, -90)
+	interactFrame.BackgroundTransparency = 1
+	interactFrame.Parent = frame
 
-	local uiListLayout = Instance.new("UIListLayout")
-	uiListLayout.FillDirection = Enum.FillDirection.Horizontal
-	uiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	uiListLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-	uiListLayout.Padding = UDim.new(0, 10)
-	uiListLayout.Parent = buttonContainer
+	local mainButtonsFrame = Instance.new("Frame")
+	mainButtonsFrame.Name = "MainButtons"
+	mainButtonsFrame.Size = UDim2.new(1, 0, 1, 0)
+	mainButtonsFrame.BackgroundTransparency = 1
+	mainButtonsFrame.Parent = interactFrame
 
-	local function createButton(name: string, text: string)
+	local mainLayout = Instance.new("UIGridLayout")
+	mainLayout.CellSize = UDim2.new(0.24, 0, 0.9, 0)
+	mainLayout.CellPadding = UDim2.new(0.02, 0, 0, 0)
+	mainLayout.FillDirectionMaxCells = 4
+	mainLayout.Parent = mainButtonsFrame
+
+	local function createMainButton(name: string, text: string)
 		local button = Instance.new("TextButton")
 		button.Name = name
-		button.Size = UDim2.new(0, 140, 1, 0)
 		button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 		button.Font = Enum.Font.GothamBold
 		button.TextSize = 16
@@ -96,28 +130,137 @@ local function createBattleGui()
 		corner.CornerRadius = UDim.new(0, 6)
 		corner.Parent = button
 
-		button.Parent = buttonContainer
+		button.Parent = mainButtonsFrame
 		return button
 	end
 
-	local move1Button = createButton("Move1Button", "Move 1")
-	local move2Button = createButton("Move2Button", "Move 2")
-	local captureButton = createButton("CaptureButton", "Capture")
-	local runButton = createButton("RunButton", "Run")
+	local fightMainButton = createMainButton("FightButton", "Fight")
+	local bagMainButton = createMainButton("BagButton", "Bag")
+	local brainrotsMainButton = createMainButton("BrainrotsButton", "Brainrots")
+	local runMainButton = createMainButton("RunButton", "Run")
 
-	move1Button.MouseButton1Click:Connect(function()
-		BattleRequest:FireServer("move", "banana_bonk")
+	local fightFrame = Instance.new("Frame")
+	fightFrame.Name = "FightFrame"
+	fightFrame.Size = UDim2.new(1, -10, 1, -10)
+	fightFrame.Position = UDim2.new(0, 5, 0, 5)
+	fightFrame.BackgroundTransparency = 1
+	fightFrame.Visible = false
+	fightFrame.Parent = interactFrame
+
+	local bagFrame = Instance.new("Frame")
+	bagFrame.Name = "BattleBagFrame"
+	bagFrame.Size = fightFrame.Size
+	bagFrame.Position = fightFrame.Position
+	bagFrame.BackgroundTransparency = 1
+	bagFrame.Visible = false
+	bagFrame.Parent = interactFrame
+
+	local switchFrame = Instance.new("Frame")
+	switchFrame.Name = "SwitchFrame"
+	switchFrame.Size = fightFrame.Size
+	switchFrame.Position = fightFrame.Position
+	switchFrame.BackgroundTransparency = 1
+	switchFrame.Visible = false
+	switchFrame.Parent = interactFrame
+
+	local function createSubBackButton(parent: Frame)
+		local back = Instance.new("TextButton")
+		back.Name = "BackButton"
+		back.Size = UDim2.new(0, 80, 0, 24)
+		back.Position = UDim2.new(0, 0, 0, 0)
+		back.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		back.TextColor3 = Color3.new(1, 1, 1)
+		back.Font = Enum.Font.GothamBold
+		back.TextSize = 14
+		back.Text = "< Back"
+
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 6)
+		c.Parent = back
+
+		back.Parent = parent
+		return back
+	end
+
+	local fightBack = createSubBackButton(fightFrame)
+	local movesList = Instance.new("Frame")
+	movesList.Name = "MovesList"
+	movesList.Size = UDim2.new(1, 0, 1, -28)
+	movesList.Position = UDim2.new(0, 0, 0, 28)
+	movesList.BackgroundTransparency = 1
+	movesList.Parent = fightFrame
+
+	local movesLayout = Instance.new("UIListLayout")
+	movesLayout.FillDirection = Enum.FillDirection.Vertical
+	movesLayout.Padding = UDim.new(0, 4)
+	movesLayout.Parent = movesList
+
+	local bagBack = createSubBackButton(bagFrame)
+	local bagListFrame = Instance.new("Frame")
+	bagListFrame.Name = "BagItems"
+	bagListFrame.Size = UDim2.new(0.5, -4, 1, -28)
+	bagListFrame.Position = UDim2.new(0, 0, 0, 28)
+	bagListFrame.BackgroundTransparency = 1
+	bagListFrame.Parent = bagFrame
+
+	local bagListLayout = Instance.new("UIListLayout")
+	bagListLayout.FillDirection = Enum.FillDirection.Vertical
+	bagListLayout.Padding = UDim.new(0, 4)
+	bagListLayout.Parent = bagListFrame
+
+	local bagDetail = Instance.new("TextLabel")
+	bagDetail.Name = "BagDetail"
+	bagDetail.Size = UDim2.new(0.5, -4, 1, -28)
+	bagDetail.Position = UDim2.new(0.5, 4, 0, 28)
+	bagDetail.BackgroundTransparency = 1
+	bagDetail.TextColor3 = Color3.new(1, 1, 1)
+	bagDetail.Font = Enum.Font.Gotham
+	bagDetail.TextSize = 14
+	bagDetail.TextWrapped = true
+	bagDetail.TextXAlignment = Enum.TextXAlignment.Left
+	bagDetail.TextYAlignment = Enum.TextYAlignment.Top
+	bagDetail.Parent = bagFrame
+
+	local switchBack = createSubBackButton(switchFrame)
+	local switchListFrame = Instance.new("Frame")
+	switchListFrame.Name = "SwitchList"
+	switchListFrame.Size = UDim2.new(1, 0, 1, -28)
+	switchListFrame.Position = UDim2.new(0, 0, 0, 28)
+	switchListFrame.BackgroundTransparency = 1
+	switchListFrame.Parent = switchFrame
+
+	local switchLayout = Instance.new("UIListLayout")
+	switchLayout.FillDirection = Enum.FillDirection.Vertical
+	switchLayout.Padding = UDim.new(0, 4)
+	switchLayout.Parent = switchListFrame
+
+	local function showMain()
+		mainButtonsFrame.Visible = true
+		fightFrame.Visible = false
+		bagFrame.Visible = false
+		switchFrame.Visible = false
+	end
+
+	fightBack.MouseButton1Click:Connect(showMain)
+	bagBack.MouseButton1Click:Connect(showMain)
+	switchBack.MouseButton1Click:Connect(showMain)
+
+	fightMainButton.MouseButton1Click:Connect(function()
+		mainButtonsFrame.Visible = false
+		fightFrame.Visible = true
 	end)
 
-	move2Button.MouseButton1Click:Connect(function()
-		BattleRequest:FireServer("move", "chimp_screech")
+	bagMainButton.MouseButton1Click:Connect(function()
+		mainButtonsFrame.Visible = false
+		bagFrame.Visible = true
 	end)
 
-	captureButton.MouseButton1Click:Connect(function()
-		BattleRequest:FireServer("capture")
+	brainrotsMainButton.MouseButton1Click:Connect(function()
+		mainButtonsFrame.Visible = false
+		switchFrame.Visible = true
 	end)
 
-	runButton.MouseButton1Click:Connect(function()
+	runMainButton.MouseButton1Click:Connect(function()
 		BattleRequest:FireServer("run")
 	end)
 
@@ -138,8 +281,13 @@ local function ensureBattleGui()
 	return battleGui
 end
 
-local function formatHPLabel(brainrot)
-	return string.format("%s Lv.%d - HP %d/%d", brainrot.displayName, brainrot.level, brainrot.hp, brainrot.maxHP)
+local function formatDiag(brainrot)
+	if not brainrot then
+		return "None", ""
+	end
+	local name = string.format("%s  Lv.%d", brainrot.displayName, brainrot.level)
+	local hpText = string.format("HP %d/%d", brainrot.hp, brainrot.maxHP)
+	return name, hpText
 end
 
 BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
@@ -149,16 +297,42 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		return
 	end
 
-	local enemyLabel = frame:FindFirstChild("EnemyLabel") :: TextLabel
-	local playerLabel = frame:FindFirstChild("PlayerLabel") :: TextLabel
+	local playerPanel = frame:FindFirstChild("PlayerPanel") :: Frame
+	local enemyPanel = frame:FindFirstChild("EnemyPanel") :: Frame
 	local messageLabel = frame:FindFirstChild("MessageLabel") :: TextLabel
 
-	if enemyLabel and battleState.enemyBrainrot then
-		enemyLabel.Text = "Wild: " .. formatHPLabel(battleState.enemyBrainrot)
+	if playerPanel and battleState.playerBrainrot then
+		local nameLabel = playerPanel:FindFirstChild("PlayerNameLabel") :: TextLabel
+		local hpLabel = playerPanel:FindFirstChild("PlayerHPLabel") :: TextLabel
+		local statusLabel = playerPanel:FindFirstChild("PlayerStatusLabel") :: TextLabel
+		local name, hpText = formatDiag(battleState.playerBrainrot)
+		if nameLabel then
+			nameLabel.Text = "You: " .. name
+		end
+		if hpLabel then
+			hpLabel.Text = hpText
+		end
+		if statusLabel then
+			statusLabel.Text = ""
+		end
 	end
-	if playerLabel and battleState.playerBrainrot then
-		playerLabel.Text = "You: " .. formatHPLabel(battleState.playerBrainrot)
+
+	if enemyPanel and battleState.enemyBrainrot then
+		local nameLabel = enemyPanel:FindFirstChild("EnemyNameLabel") :: TextLabel
+		local hpLabel = enemyPanel:FindFirstChild("EnemyHPLabel") :: TextLabel
+		local statusLabel = enemyPanel:FindFirstChild("EnemyStatusLabel") :: TextLabel
+		local name, hpText = formatDiag(battleState.enemyBrainrot)
+		if nameLabel then
+			nameLabel.Text = "Wild: " .. name
+		end
+		if hpLabel then
+			hpLabel.Text = hpText
+		end
+		if statusLabel then
+			statusLabel.Text = ""
+		end
 	end
+
 	if messageLabel then
 		messageLabel.Text = message or ""
 	end
