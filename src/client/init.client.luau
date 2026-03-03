@@ -910,6 +910,53 @@ local function showHealNotification()
 	end)
 end
 
+local function showLevelUpPopup(displayName: string?, newLevel: number?)
+	local existing = PlayerGui:FindFirstChild("BrainrotLevelUpPopup") :: ScreenGui?
+	if existing then
+		existing:Destroy()
+	end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "BrainrotLevelUpPopup"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new("Frame")
+	frame.AnchorPoint = Vector2.new(0.5, 0)
+	frame.Position = UDim2.new(0.5, 0, 0, 60)
+	frame.Size = UDim2.new(0.35, 0, 0, 50)
+	frame.BackgroundColor3 = Color3.fromRGB(30, 30, 60)
+	frame.BackgroundTransparency = 0.15
+	frame.Parent = gui
+
+	local frameCorner = Instance.new("UICorner")
+	frameCorner.CornerRadius = UDim.new(0, 10)
+	frameCorner.Parent = frame
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = 2
+	stroke.Color = Color3.fromRGB(255, 215, 0)
+	stroke.Parent = frame
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -20, 1, 0)
+	label.Position = UDim2.new(0, 10, 0, 0)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 215, 0)
+	label.Font = Enum.Font.GothamBold
+	label.TextSize = 20
+	label.Text = (displayName or "Your brainrot") .. " leveled up to Lv." .. tostring(newLevel or "?") .. "!"
+	label.TextXAlignment = Enum.TextXAlignment.Center
+	label.Parent = frame
+
+	task.delay(2.5, function()
+		if gui then
+			gui:Destroy()
+		end
+	end)
+end
+
 BattleAnimation.OnClientEvent:Connect(function(action: string, payload: any?)
 	if action == "start" and payload then
 		local originPos = payload.arenaOrigin or Vector3.new(0, 120, 0)

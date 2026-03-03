@@ -586,6 +586,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 		captureChance = math.clamp(captureChance, 0.05, 0.95)
 
 		if math.random() < captureChance then
+			local captureExpMsg: string? = nil
 			local data = playerData[player]
 			if data then
 				if #data.collection >= COLLECTION_CAP then
@@ -603,11 +604,13 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 
 					data.stats.totalCaught += 1
 					markDexCaught(data, enemyMon.id)
-					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
+					local captureExp = calculateExpGain(playerMon, enemyMon)
+					grantExpAndNotifyLevelUp(player, playerMon, captureExp)
+					captureExpMsg = " +" .. tostring(captureExp) .. " EXP!"
 				end
 			end
 			battle.state = "finished"
-			sendBattleUpdate(player, battle, "You captured " .. enemyMon.displayName .. "!")
+			sendBattleUpdate(player, battle, "You captured " .. enemyMon.displayName .. "!" .. (captureExpMsg or ""))
 			sendBattleAnimation(player, "caughtPopup", {
 				brainrotId = enemyMon.id,
 				displayName = enemyMon.displayName,
@@ -772,13 +775,14 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			end
 			if enemyMon.hp <= 0 then
 				battle.state = "won"
-				local data = playerData[player]
-				if data then
-					data.stats.battlesWon += 1
-					markDexCaught(data, enemyMon.id)
-					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
-				end
-				sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted!")
+			local data = playerData[player]
+			local expGain = calculateExpGain(playerMon, enemyMon)
+			if data then
+				data.stats.battlesWon += 1
+				markDexCaught(data, enemyMon.id)
+				grantExpAndNotifyLevelUp(player, playerMon, expGain)
+			end
+			sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted! +" .. tostring(expGain) .. " EXP!")
 				endBattleForPlayer(player, "won")
 				return
 			end
@@ -833,12 +837,13 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			if enemyMon.hp <= 0 then
 				battle.state = "won"
 				local data = playerData[player]
+				local expGain = calculateExpGain(playerMon, enemyMon)
 				if data then
 					data.stats.battlesWon += 1
 					markDexCaught(data, enemyMon.id)
-					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
+					grantExpAndNotifyLevelUp(player, playerMon, expGain)
 				end
-				sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
+				sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted! +" .. tostring(expGain) .. " EXP!")
 				endBattleForPlayer(player, "won")
 				return
 			end
@@ -858,18 +863,19 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			endBattleForPlayer(player, "lost")
 			return
 		end
-		if enemyMon.hp <= 0 then
-			battle.state = "won"
-			local data = playerData[player]
-			if data then
-				data.stats.battlesWon += 1
-				markDexCaught(data, enemyMon.id)
-				grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
-			end
-			sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
-			endBattleForPlayer(player, "won")
-			return
+	if enemyMon.hp <= 0 then
+		battle.state = "won"
+		local data = playerData[player]
+		local expGain = calculateExpGain(playerMon, enemyMon)
+		if data then
+			data.stats.battlesWon += 1
+			markDexCaught(data, enemyMon.id)
+			grantExpAndNotifyLevelUp(player, playerMon, expGain)
 		end
+		sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted! +" .. tostring(expGain) .. " EXP!")
+		endBattleForPlayer(player, "won")
+		return
+	end
 
 		sendBattleUpdate(player, battle, msg)
 	end
