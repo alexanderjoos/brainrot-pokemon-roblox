@@ -535,6 +535,14 @@ local function spawnBrainrotModel(brainrotId: string, position: Vector3, facing:
 		body.Parent = model
 	end
 
+	-- Ensure all parts are anchored so the brainrot doesn't fall
+	for _, desc in ipairs(model:GetDescendants()) do
+		local part = desc :: any
+		if typeof(part) == "Instance" and part:IsA("BasePart") then
+			part.Anchored = true
+		end
+	end
+
 	model.Parent = battleArenaModel
 
 	local primaryPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
