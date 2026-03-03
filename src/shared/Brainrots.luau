@@ -280,6 +280,33 @@ function module.getTypeEffectiveness(attackType: string?, defendType: string?): 
 	return row[defendType] or 1
 end
 
+-- Returns { weakTo, strongAgainst, resistantTo } for dex UI
+function module.getTypeEffectivenessInfo(defendType: string?): { weakTo: { string }, strongAgainst: { string }, resistantTo: { string } }
+	local weakTo: { string } = {}
+	local strongAgainst: { string } = {}
+	local resistantTo: { string } = {}
+	if not defendType or defendType == "Neutral" then
+		return { weakTo = weakTo, strongAgainst = strongAgainst, resistantTo = resistantTo }
+	end
+	for attacker, row in TYPE_EFFECTIVENESS do
+		local mult = row[defendType]
+		if mult == 1.5 then
+			table.insert(weakTo, attacker)
+		elseif mult == 0.5 then
+			table.insert(resistantTo, attacker)
+		end
+	end
+	local myRow = TYPE_EFFECTIVENESS[defendType]
+	if myRow then
+		for defender, mult in myRow do
+			if mult == 1.5 then
+				table.insert(strongAgainst, defender)
+			end
+		end
+	end
+	return { weakTo = weakTo, strongAgainst = strongAgainst, resistantTo = resistantTo }
+end
+
 function module.calculateDamage(attacker, defender, move)
 	local power = move.power or 5
 	local level = attacker.level or 1

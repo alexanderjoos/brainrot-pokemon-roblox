@@ -23,10 +23,13 @@ local OpenPC: RemoteEvent = RemotesFolder:WaitForChild("OpenPC") :: RemoteEvent
 local BattleInvite: RemoteEvent = RemotesFolder:FindFirstChild("BattleInvite") or RemotesFolder:WaitForChild("BattleInvite") :: RemoteEvent
 local BattleInviteResponse: RemoteEvent = RemotesFolder:FindFirstChild("BattleInviteResponse") or RemotesFolder:WaitForChild("BattleInviteResponse") :: RemoteEvent
 local SetSettings: RemoteEvent = RemotesFolder:FindFirstChild("SetSettings") or RemotesFolder:WaitForChild("SetSettings") :: RemoteEvent
+local UseItemOutsideBattle: RemoteFunction = RemotesFolder:FindFirstChild("UseItemOutsideBattle") or RemotesFolder:WaitForChild("UseItemOutsideBattle") :: RemoteFunction
+local ItemAcquired: RemoteEvent = RemotesFolder:FindFirstChild("ItemAcquired") or RemotesFolder:WaitForChild("ItemAcquired") :: RemoteEvent
 
 local BrainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotList") or ReplicatedStorage:FindFirstChild("BrainrotModels") or ReplicatedStorage:WaitForChild("BrainrotModels")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
+local Items = require(Shared:WaitForChild("Items"))
 
 local function getModelLookupName(brainrotId: string): string
 	local def = Brainrots.getById(brainrotId)
@@ -37,6 +40,7 @@ local function createBattleGui()
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "BrainrotBattleGui"
 	screenGui.ResetOnSpawn = false
+	screenGui.DisplayOrder = 50
 
 	local frame = Instance.new("Frame")
 	frame.Size = UDim2.new(1, -40, 0, 260)
@@ -86,10 +90,22 @@ local function createBattleGui()
 		hpLabel.TextColor3 = Color3.fromRGB(160, 240, 160)
 		hpLabel.Parent = parent
 
+		local statusIcon = Instance.new("Frame")
+		statusIcon.Name = prefix .. "StatusIcon"
+		statusIcon.Size = UDim2.new(0, 16, 0, 16)
+		statusIcon.Position = UDim2.new(0, 0, 0, 42)
+		statusIcon.BackgroundTransparency = 1
+		statusIcon.Visible = false
+		statusIcon.Parent = parent
+
+		local statusIconCorner = Instance.new("UICorner")
+		statusIconCorner.CornerRadius = UDim.new(0, 4)
+		statusIconCorner.Parent = statusIcon
+
 		local statusLabel = Instance.new("TextLabel")
 		statusLabel.Name = prefix .. "StatusLabel"
-		statusLabel.Size = UDim2.new(1, 0, 0, 18)
-		statusLabel.Position = UDim2.new(0, 0, 0, 42)
+		statusLabel.Size = UDim2.new(1, -22, 0, 18)
+		statusLabel.Position = UDim2.new(0, 20, 0, 42)
 		statusLabel.BackgroundTransparency = 1
 		statusLabel.Font = Enum.Font.Gotham
 		statusLabel.TextSize = 14
@@ -386,6 +402,15 @@ local battleGui: ScreenGui? = nil
 local battleArenaModel: Model? = nil
 local battlePlayerModel: Model? = nil
 local battleEnemyModel: Model? = nil
+local battlePlayerHealthbarFill: Frame? = nil
+local battleEnemyHealthbarFill: Frame? = nil
+
+local STATUS_ICON_COLORS: { [string]: Color3 } = {
+	poison = Color3.fromRGB(160, 80, 200),
+	burn = Color3.fromRGB(240, 120, 40),
+	paralyze = Color3.fromRGB(240, 220, 60),
+	sleep = Color3.fromRGB(80, 120, 200),
+}
 
 local function ensureBattleGui()
 	if battleGui and battleGui.Parent then
@@ -411,6 +436,32 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		return
 	end
 
+	-- Update or create healthbars above battle models
+	if battlePlayerModel and battleState.playerBrainrot then
+		local mon = battleState.playerBrainrot
+		if not battlePlayerHealthbarFill or not battlePlayerHealthbarFill.Parent then
+			local _, fill = attachHealthbarToModel(battlePlayerModel, mon.maxHP, mon.hp)
+			battlePlayerHealthbarFill = fill
+		end
+		if battlePlayerHealthbarFill then
+			battlePlayerHealthbarFill.Size = UDim2.new(math.clamp(mon.hp / math.max(mon.maxHP, 1), 0, 1), 0, 1, 0)
+			battlePlayerHealthbarFill.BackgroundColor3 = mon.hp <= 0 and Color3.fromRGB(100, 100, 100)
+				or (mon.hp < mon.maxHP / 4 and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(80, 200, 80))
+		end
+	end
+	if battleEnemyModel and battleState.enemyBrainrot then
+		local mon = battleState.enemyBrainrot
+		if not battleEnemyHealthbarFill or not battleEnemyHealthbarFill.Parent then
+			local _, fill = attachHealthbarToModel(battleEnemyModel, mon.maxHP, mon.hp)
+			battleEnemyHealthbarFill = fill
+		end
+		if battleEnemyHealthbarFill then
+			battleEnemyHealthbarFill.Size = UDim2.new(math.clamp(mon.hp / math.max(mon.maxHP, 1), 0, 1), 0, 1, 0)
+			battleEnemyHealthbarFill.BackgroundColor3 = mon.hp <= 0 and Color3.fromRGB(100, 100, 100)
+				or (mon.hp < mon.maxHP / 4 and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(80, 200, 80))
+		end
+	end
+
 	local playerPanel = frame:FindFirstChild("PlayerPanel") :: Frame
 	local enemyPanel = frame:FindFirstChild("EnemyPanel") :: Frame
 	local messageLabel = frame:FindFirstChild("MessageLabel") :: TextLabel
@@ -432,6 +483,18 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 			local status = (battleState.playerBrainrot :: any).statusEffect
 			statusLabel.Text = status and (status:sub(1, 1):upper() .. status:sub(2)) or ""
 		end
+		local statusIcon = playerPanel:FindFirstChild("PlayerStatusIcon") :: Frame?
+		if statusIcon then
+			local status = (battleState.playerBrainrot :: any).statusEffect
+			if status and STATUS_ICON_COLORS[status] then
+				statusIcon.Visible = true
+				statusIcon.BackgroundColor3 = STATUS_ICON_COLORS[status]
+				statusIcon.BackgroundTransparency = 0
+			else
+				statusIcon.Visible = false
+				statusIcon.BackgroundTransparency = 1
+			end
+		end
 	end
 
 	if enemyPanel and battleState.enemyBrainrot then
@@ -448,6 +511,18 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		if statusLabel then
 			local status = (battleState.enemyBrainrot :: any).statusEffect
 			statusLabel.Text = status and (status:sub(1, 1):upper() .. status:sub(2)) or ""
+		end
+		local statusIcon = enemyPanel:FindFirstChild("EnemyStatusIcon") :: Frame?
+		if statusIcon then
+			local status = (battleState.enemyBrainrot :: any).statusEffect
+			if status and STATUS_ICON_COLORS[status] then
+				statusIcon.Visible = true
+				statusIcon.BackgroundColor3 = STATUS_ICON_COLORS[status]
+				statusIcon.BackgroundTransparency = 0
+			else
+				statusIcon.Visible = false
+				statusIcon.BackgroundTransparency = 1
+			end
 		end
 	end
 
@@ -514,6 +589,8 @@ local function cleanupBattleScene()
 	end
 	battlePlayerModel = nil
 	battleEnemyModel = nil
+	battlePlayerHealthbarFill = nil
+	battleEnemyHealthbarFill = nil
 end
 
 local function createSimpleBattleArena(originPos: Vector3)
@@ -536,6 +613,44 @@ local function createSimpleBattleArena(originPos: Vector3)
 	return originPos
 end
 
+local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: number): (BillboardGui, Frame)
+	local attachPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
+	if not attachPart then
+		return nil, nil
+	end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "Healthbar"
+	billboard.Size = UDim2.new(0, 80, 0, 12)
+	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = attachPart
+
+	local bg = Instance.new("Frame")
+	bg.Name = "Background"
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+	bg.BorderSizePixel = 0
+	bg.Parent = billboard
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 2)
+	bgCorner.Parent = bg
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(math.clamp(currentHP / math.max(maxHP, 1), 0, 1), 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+	fill.BorderSizePixel = 0
+	fill.Parent = bg
+
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 2)
+	fillCorner.Parent = fill
+
+	return billboard, fill
+end
+
 local function spawnBrainrotModel(brainrotId: string, position: Vector3, facing: CFrame)
 	local lookupName = getModelLookupName(brainrotId)
 	local template = BrainrotModelsFolder:FindFirstChild(lookupName)
@@ -554,11 +669,12 @@ local function spawnBrainrotModel(brainrotId: string, position: Vector3, facing:
 		body.Parent = model
 	end
 
-	-- Ensure all parts are anchored so the brainrot doesn't fall
+	-- Ensure all parts are anchored and non-colliding in battle arena
 	for _, desc in ipairs(model:GetDescendants()) do
 		local part = desc :: any
 		if typeof(part) == "Instance" and part:IsA("BasePart") then
 			part.Anchored = true
+			part.CanCollide = false
 		end
 	end
 
@@ -695,6 +811,69 @@ local function showCaughtPopup(brainrotId: string, displayName: string?)
 	end)
 end
 
+local function showLevelUpPopup(displayName: string, newLevel: number)
+	local existing = PlayerGui:FindFirstChild("BrainrotLevelUpPopup") :: ScreenGui?
+	if existing then
+		existing:Destroy()
+	end
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "BrainrotLevelUpPopup"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.Parent = PlayerGui
+
+	local frame = Instance.new("Frame")
+	frame.Name = "PopupFrame"
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.new(0.5, 0, 0.5, 0)
+	frame.Size = UDim2.new(0.28, 0, 0.2, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+	frame.BackgroundTransparency = 0.1
+	frame.Parent = gui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = frame
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, -20, 0, 28)
+	title.Position = UDim2.new(0, 10, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 18
+	title.TextColor3 = Color3.fromRGB(180, 220, 255)
+	title.Text = "Level Up!"
+	title.Parent = frame
+
+	local label = Instance.new("TextLabel")
+	label.Name = "LevelLabel"
+	label.Size = UDim2.new(1, -20, 0, 40)
+	label.Position = UDim2.new(0, 10, 0, 42)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.Gotham
+	label.TextSize = 16
+	label.TextColor3 = Color3.new(1, 1, 1)
+	label.TextWrapped = true
+	label.Text = string.format("%s reached level %d!", displayName or "Brainrot", newLevel or 1)
+	label.Parent = frame
+
+	local function dismiss()
+		if gui and gui.Parent then
+			gui:Destroy()
+		end
+	end
+
+	frame.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+			dismiss()
+		end
+	end)
+
+	task.delay(3, dismiss)
+end
+
 local function showHealNotification()
 	local existing = PlayerGui:FindFirstChild("BrainrotHealPopup") :: ScreenGui?
 	if existing then
@@ -745,6 +924,8 @@ BattleAnimation.OnClientEvent:Connect(function(action: string, payload: any?)
 		playCaptureBallAnimation()
 	elseif action == "caughtPopup" and payload then
 		showCaughtPopup(payload.brainrotId, payload.displayName)
+	elseif action == "levelUp" and payload then
+		showLevelUpPopup(payload.displayName or payload.brainrotId, payload.newLevel or 1)
 	elseif action == "end" then
 		cleanupBattleScene()
 	end
@@ -759,6 +940,7 @@ local function createMenuGui()
 	screenGui.Name = "BrainrotMenuGui"
 	screenGui.ResetOnSpawn = false
 	screenGui.IgnoreGuiInset = true
+	screenGui.DisplayOrder = 100
 	screenGui.Parent = PlayerGui
 
 	local menuButton = Instance.new("TextButton")
@@ -856,14 +1038,21 @@ local function createMenuGui()
 	contentBody.BackgroundTransparency = 1
 	contentBody.Parent = contentFrame
 
+	local bagFrame = Instance.new("Frame")
+	bagFrame.Name = "BagFrame"
+	bagFrame.Size = UDim2.new(1, 0, 1, 0)
+	bagFrame.BackgroundTransparency = 1
+	bagFrame.Visible = false
+	bagFrame.Parent = contentBody
+
 	local bagList = Instance.new("ScrollingFrame")
 	bagList.Name = "BagList"
-	bagList.Size = UDim2.new(1, 0, 1, 0)
+	bagList.Size = UDim2.new(0.45, -4, 1, 0)
+	bagList.Position = UDim2.new(0, 0, 0, 0)
 	bagList.CanvasSize = UDim2.new(0, 0, 0, 0)
 	bagList.BackgroundTransparency = 1
 	bagList.ScrollBarThickness = 4
-	bagList.Visible = false
-	bagList.Parent = contentBody
+	bagList.Parent = bagFrame
 
 	local bagLayout = Instance.new("UIListLayout")
 	bagLayout.FillDirection = Enum.FillDirection.Vertical
@@ -871,6 +1060,56 @@ local function createMenuGui()
 	bagLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 	bagLayout.Padding = UDim.new(0, 4)
 	bagLayout.Parent = bagList
+
+	local bagDetail = Instance.new("Frame")
+	bagDetail.Name = "BagDetail"
+	bagDetail.Size = UDim2.new(0.55, -4, 1, 0)
+	bagDetail.Position = UDim2.new(0.45, 4, 0, 0)
+	bagDetail.BackgroundTransparency = 1
+	bagDetail.Parent = bagFrame
+
+	local bagDetailLabel = Instance.new("TextLabel")
+	bagDetailLabel.Name = "BagDetailLabel"
+	bagDetailLabel.Size = UDim2.new(1, -8, 1, -60)
+	bagDetailLabel.Position = UDim2.new(0, 0, 0, 0)
+	bagDetailLabel.BackgroundTransparency = 1
+	bagDetailLabel.TextColor3 = Color3.new(1, 1, 1)
+	bagDetailLabel.Font = Enum.Font.Gotham
+	bagDetailLabel.TextSize = 14
+	bagDetailLabel.TextWrapped = true
+	bagDetailLabel.TextXAlignment = Enum.TextXAlignment.Left
+	bagDetailLabel.TextYAlignment = Enum.TextYAlignment.Top
+	bagDetailLabel.Text = "Select an item to view details."
+	bagDetailLabel.Parent = bagDetail
+
+	local bagUseButton = Instance.new("TextButton")
+	bagUseButton.Name = "BagUseButton"
+	bagUseButton.Size = UDim2.new(1, 0, 0, 32)
+	bagUseButton.Position = UDim2.new(0, 0, 1, -40)
+	bagUseButton.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+	bagUseButton.TextColor3 = Color3.new(1, 1, 1)
+	bagUseButton.Font = Enum.Font.GothamBold
+	bagUseButton.TextSize = 14
+	bagUseButton.Text = "Use"
+	bagUseButton.Visible = false
+	bagUseButton.Parent = bagDetail
+
+	local bagUseCorner = Instance.new("UICorner")
+	bagUseCorner.CornerRadius = UDim.new(0, 6)
+	bagUseCorner.Parent = bagUseButton
+
+	local bagPartyDropdown = Instance.new("TextButton")
+	bagPartyDropdown.Name = "BagPartyDropdown"
+	bagPartyDropdown.Size = UDim2.new(1, 0, 0, 20)
+	bagPartyDropdown.Position = UDim2.new(0, 0, 1, -76)
+	bagPartyDropdown.BackgroundTransparency = 1
+	bagPartyDropdown.TextColor3 = Color3.fromRGB(200, 200, 220)
+	bagPartyDropdown.Font = Enum.Font.Gotham
+	bagPartyDropdown.TextSize = 12
+	bagPartyDropdown.TextXAlignment = Enum.TextXAlignment.Left
+	bagPartyDropdown.Text = ""
+	bagPartyDropdown.Visible = false
+	bagPartyDropdown.Parent = bagDetail
 
 	local trainerFrame = Instance.new("Frame")
 	trainerFrame.Name = "TrainerFrame"
@@ -1491,7 +1730,7 @@ local function createMenuGui()
 	local pcReleaseButton = createPCActionButton("PCReleaseButton", "Release")
 
 	local function hideAllContent()
-		bagList.Visible = false
+		bagFrame.Visible = false
 		trainerFrame.Visible = false
 		dexFrame.Visible = false
 		settingsFrame.Visible = false
@@ -1504,6 +1743,8 @@ local function createMenuGui()
 	local pcSelectedCollectionIndex: number? = nil
 	local PC_SLOTS_PER_PAGE = 30
 	local pcCurrentPage = 1
+
+	local bagState = { selectedItem = nil, selectedPartyIndex = 1 }
 
 	local function refreshTrainerData()
 		local data = GetTrainerData:InvokeServer()
@@ -1522,20 +1763,57 @@ local function createMenuGui()
 		local function rebuildBag()
 			clearChildren(bagList)
 			bagLayout.Parent = bagList
+			bagState.selectedItem = nil
+			bagDetailLabel.Text = "Select an item to view details."
+			bagUseButton.Visible = false
+			bagPartyDropdown.Visible = false
 
 			for _, entry in ipairs(data.bag or {}) do
-				local label = Instance.new("TextLabel")
-				label.Size = UDim2.new(1, -4, 0, 20)
-				label.BackgroundTransparency = 1
-				label.TextColor3 = Color3.new(1, 1, 1)
-				label.Font = Enum.Font.Gotham
-				label.TextSize = 14
-				label.TextXAlignment = Enum.TextXAlignment.Left
-				label.Text = string.format("%s x%d", entry.displayName, entry.quantity)
-				label.Parent = bagList
+				local btn = Instance.new("TextButton")
+				btn.Size = UDim2.new(1, -4, 0, 24)
+				btn.BackgroundColor3 = Color3.fromRGB(30, 30, 45)
+				btn.BackgroundTransparency = 0.5
+				btn.TextColor3 = Color3.new(1, 1, 1)
+				btn.Font = Enum.Font.Gotham
+				btn.TextSize = 14
+				btn.TextXAlignment = Enum.TextXAlignment.Left
+				btn.Text = string.format("%s x%d", entry.displayName, entry.quantity)
+				btn.Parent = bagList
+
+				local corner = Instance.new("UICorner")
+				corner.CornerRadius = UDim.new(0, 4)
+				corner.Parent = btn
+
+				btn.MouseButton1Click:Connect(function()
+					bagState.selectedItem = entry
+					bagState.selectedPartyIndex = data.leaderIndex or 1
+					local itemDef = Items.getById(entry.id)
+					local desc = itemDef and (itemDef.description or "") or ""
+					local ability = itemDef and (itemDef :: any).ability or ""
+					bagDetailLabel.Text = string.format("%s x%d\n\n%s", entry.displayName, entry.quantity, desc)
+					if ability and ability ~= "" then
+						bagDetailLabel.Text ..= "\n\n" .. ability
+					end
+
+					local effect = itemDef and itemDef.effect
+					local usableOutside = effect and (effect.heal or effect.revive)
+					bagUseButton.Visible = usableOutside
+					if usableOutside then
+						local party = data.party or {}
+						local names = {}
+						for i, mon in ipairs(party) do
+							local status = mon.hp <= 0 and " (fainted)" or (" HP " .. mon.hp .. "/" .. mon.maxHP)
+							table.insert(names, i .. ": " .. (mon.displayName or "?") .. status)
+						end
+						bagPartyDropdown.Text = "Use on: " .. (names[bagState.selectedPartyIndex] or "—")
+						bagPartyDropdown.Visible = #party > 0
+					else
+						bagPartyDropdown.Visible = false
+					end
+				end)
 			end
 
-			bagList.CanvasSize = UDim2.new(0, 0, 0, #(data.bag or {}) * 24)
+			bagList.CanvasSize = UDim2.new(0, 0, 0, math.max(1, #(data.bag or {})) * 28)
 		end
 
 		local function rebuildTrainerCard()
@@ -1693,11 +1971,23 @@ local function createMenuGui()
 							movesText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
 						end
 					end
+					local eff = Brainrots.getTypeEffectivenessInfo(brainrotType)
+					local weakStr = #eff.weakTo > 0 and table.concat(eff.weakTo, ", ") or "None"
+					local strongStr = #eff.strongAgainst > 0 and table.concat(eff.strongAgainst, ", ") or "None"
+					local resistStr = #eff.resistantTo > 0 and table.concat(eff.resistantTo, ", ") or "None"
+					local typeInfo = string.format(
+						"Type: %s\nWeak to: %s\nStrong against: %s\nResistant to: %s",
+						brainrotType,
+						weakStr,
+						strongStr,
+						resistStr
+					)
 					dexDetail.Text = string.format(
-						"%s [%s]\n%s\n\nBase Stats:\nHP: %d  ATK: %d  DEF: %d  SPD: %d\n\nMoves:\n%s",
+						"%s [%s]\n%s\n\n%s\n\nBase Stats:\nHP: %d  ATK: %d  DEF: %d  SPD: %d\n\nMoves:\n%s",
 						displayName,
 						brainrotType,
 						desc,
+						typeInfo,
 						stats.maxHP or 30,
 						stats.attack or 8,
 						stats.defense or 8,
@@ -2074,7 +2364,7 @@ local function createMenuGui()
 
 		if section == "bag" then
 			contentLabel.Text = "Bag"
-			bagList.Visible = true
+			bagFrame.Visible = true
 		elseif section == "trainer" then
 			contentLabel.Text = "Trainer Card"
 			trainerFrame.Visible = true
@@ -2110,6 +2400,29 @@ local function createMenuGui()
 
 	bagButton.MouseButton1Click:Connect(function()
 		openSection("bag")
+	end)
+
+	bagUseButton.MouseButton1Click:Connect(function()
+		local entry = bagState.selectedItem
+		if not entry then return end
+		local success, msg = UseItemOutsideBattle:InvokeServer(entry.id, bagState.selectedPartyIndex)
+		bagDetailLabel.Text = msg or (success and "Used!" or "Couldn't use.")
+		if success then
+			bagState.selectedItem = nil
+			bagUseButton.Visible = false
+			bagPartyDropdown.Visible = false
+			refreshTrainerData()
+		end
+	end)
+
+	bagPartyDropdown.MouseButton1Click:Connect(function()
+		local data = GetTrainerData:InvokeServer()
+		if not data or not data.party or #data.party == 0 then return end
+		bagState.selectedPartyIndex = (bagState.selectedPartyIndex % #data.party) + 1
+		local party = data.party
+		local mon = party[bagState.selectedPartyIndex]
+		local status = mon and (mon.hp <= 0 and " (fainted)" or (" HP " .. mon.hp .. "/" .. mon.maxHP)) or ""
+		bagPartyDropdown.Text = "Use on: " .. (mon and (bagState.selectedPartyIndex .. ": " .. (mon.displayName or "?") .. status) or "—")
 	end)
 
 	trainerButton.MouseButton1Click:Connect(function()
@@ -2420,4 +2733,77 @@ local function createMenuGui()
 end
 
 createMenuGui()
+
+-- Item acquire popup (menu-7)
+local itemPopupGui = Instance.new("ScreenGui")
+itemPopupGui.Name = "ItemAcquirePopup"
+itemPopupGui.ResetOnSpawn = false
+itemPopupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+itemPopupGui.Parent = PlayerGui
+
+ItemAcquired.OnClientEvent:Connect(function(itemId: string, displayName: string, quantity: number)
+	local overlay = Instance.new("Frame")
+	overlay.Name = "ItemPopupOverlay"
+	overlay.Size = UDim2.new(1, 0, 1, 0)
+	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
+	overlay.BackgroundTransparency = 0.5
+	overlay.Parent = itemPopupGui
+
+	local popup = Instance.new("Frame")
+	popup.Name = "ItemPopup"
+	popup.Size = UDim2.new(0, 280, 0, 120)
+	popup.Position = UDim2.new(0.5, -140, 0.5, -60)
+	popup.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+	popup.Parent = overlay
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = popup
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(80, 120, 180)
+	stroke.Thickness = 2
+	stroke.Parent = popup
+
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, -20, 0, 24)
+	titleLabel.Position = UDim2.new(0, 10, 0, 10)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
+	titleLabel.Font = Enum.Font.GothamBold
+	titleLabel.TextSize = 16
+	titleLabel.Text = "Item acquired!"
+	titleLabel.Parent = popup
+
+	local itemLabel = Instance.new("TextLabel")
+	itemLabel.Size = UDim2.new(1, -20, 0, 36)
+	itemLabel.Position = UDim2.new(0, 10, 0, 38)
+	itemLabel.BackgroundTransparency = 1
+	itemLabel.TextColor3 = Color3.new(1, 1, 1)
+	itemLabel.Font = Enum.Font.Gotham
+	itemLabel.TextSize = 18
+	itemLabel.Text = string.format("%s x%d", displayName, quantity)
+	itemLabel.Parent = popup
+
+	local dismissLabel = Instance.new("TextLabel")
+	dismissLabel.Size = UDim2.new(1, -20, 0, 20)
+	dismissLabel.Position = UDim2.new(0, 10, 1, -28)
+	dismissLabel.BackgroundTransparency = 1
+	dismissLabel.TextColor3 = Color3.fromRGB(160, 160, 180)
+	dismissLabel.Font = Enum.Font.Gotham
+	dismissLabel.TextSize = 12
+	dismissLabel.Text = "Click anywhere to dismiss"
+	dismissLabel.Parent = popup
+
+	local function dismiss()
+		overlay:Destroy()
+	end
+
+	overlay.MouseButton1Click:Connect(dismiss)
+	task.delay(3, function()
+		if overlay and overlay.Parent then
+			dismiss()
+		end
+	end)
+end)
 

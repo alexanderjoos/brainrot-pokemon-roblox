@@ -84,6 +84,15 @@ if not UseItemOutsideBattleRemote then
 end
 local UseItemOutsideBattle = UseItemOutsideBattleRemote :: RemoteFunction
 
+local ItemAcquiredRemote = RemotesFolder:FindFirstChild("ItemAcquired") :: RemoteEvent?
+if not ItemAcquiredRemote then
+	local newEv = Instance.new("RemoteEvent")
+	newEv.Name = "ItemAcquired"
+	newEv.Parent = RemotesFolder
+	ItemAcquiredRemote = newEv
+end
+local ItemAcquired = ItemAcquiredRemote :: RemoteEvent
+
 type BrainrotInstance = {
 	id: string,
 	displayName: string,
@@ -997,7 +1006,10 @@ local function spawnRandomItem()
 		end
 
 		addToBag(data, itemId)
-
+		local itemDef = Items.getById(itemId)
+		if itemDef then
+			ItemAcquired:FireClient(player, itemId, itemDef.displayName, 1)
+		end
 		part:Destroy()
 	end)
 end
@@ -1488,6 +1500,8 @@ Players.PlayerAdded:Connect(function(player)
 		for _ = 1, 5 do
 			addToBag(data, "henny")
 		end
+		ItemAcquired:FireClient(player, "troppi_ball", "Troppi-ball", 5)
+		ItemAcquired:FireClient(player, "henny", "Henny", 5)
 	end
 	if not data.settings then
 		data.settings = { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 }
