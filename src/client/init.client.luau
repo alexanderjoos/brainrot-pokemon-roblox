@@ -293,7 +293,11 @@ local function createBattleGui()
 					entry.displayName,
 					entry.quantity or 1
 				)
-				BattleRequest:FireServer("useItem", entry.id)
+				if entry.id == "troppi_ball" then
+					BattleRequest:FireServer("capture")
+				else
+					BattleRequest:FireServer("useItem", entry.id)
+				end
 			end)
 		end
 	end)
