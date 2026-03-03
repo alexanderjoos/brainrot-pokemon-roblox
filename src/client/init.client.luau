@@ -15,6 +15,11 @@ local HealComplete: RemoteEvent = RemotesFolder:WaitForChild("HealComplete") :: 
 local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: RemoteEvent
 local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: RemoteEvent
 local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
+local MoveBrainrotBetweenPartyAndCollection: RemoteFunction =
+	RemotesFolder:WaitForChild("MoveBrainrotBetweenPartyAndCollection") :: RemoteFunction
+local ReleaseFromCollection: RemoteFunction =
+	RemotesFolder:WaitForChild("ReleaseFromCollection") :: RemoteFunction
+local OpenPC: RemoteEvent = RemotesFolder:WaitForChild("OpenPC") :: RemoteEvent
 
 local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -816,6 +821,7 @@ local function createMenuGui()
 	local dexButton = createTabButton("DexButton", "Troppi-dex")
 	local settingsButton = createTabButton("SettingsButton", "Settings")
 	local brainrotsButton = createTabButton("BrainrotsButton", "Brainrots")
+	local pcButton = createTabButton("PCButton", "PC / Boxes")
 
 	local contentLabel = Instance.new("TextLabel")
 	contentLabel.Name = "ContentLabel"
@@ -1097,15 +1103,164 @@ local function createMenuGui()
 	releaseCorner.CornerRadius = UDim.new(0, 6)
 	releaseCorner.Parent = releaseButton
 
+	local sendToPCButton = Instance.new("TextButton")
+	sendToPCButton.Name = "SendToPCButton"
+	sendToPCButton.Size = UDim2.new(0, 120, 0, 24)
+	sendToPCButton.Position = UDim2.new(0.48, 0, 0, 88)
+	sendToPCButton.BackgroundColor3 = Color3.fromRGB(40, 60, 80)
+	sendToPCButton.TextColor3 = Color3.new(1, 1, 1)
+	sendToPCButton.Font = Enum.Font.GothamBold
+	sendToPCButton.TextSize = 14
+	sendToPCButton.TextXAlignment = Enum.TextXAlignment.Left
+	sendToPCButton.Text = "Send to PC"
+	sendToPCButton.Parent = brainrotsFrame
+
+	local sendToPCCorner = Instance.new("UICorner")
+	sendToPCCorner.CornerRadius = UDim.new(0, 6)
+	sendToPCCorner.Parent = sendToPCButton
+
+	local pcFrame = Instance.new("Frame")
+	pcFrame.Name = "PCFrame"
+	pcFrame.Size = UDim2.new(1, 0, 1, 0)
+	pcFrame.BackgroundTransparency = 1
+	pcFrame.Visible = false
+	pcFrame.Parent = contentBody
+
+	local pcHeader = Instance.new("TextLabel")
+	pcHeader.Name = "PCHeader"
+	pcHeader.Size = UDim2.new(1, 0, 0, 24)
+	pcHeader.Position = UDim2.new(0, 0, 0, 0)
+	pcHeader.BackgroundTransparency = 1
+	pcHeader.TextColor3 = Color3.new(1, 1, 1)
+	pcHeader.Font = Enum.Font.GothamBold
+	pcHeader.TextSize = 18
+	pcHeader.TextXAlignment = Enum.TextXAlignment.Left
+	pcHeader.Text = "PC Storage"
+	pcHeader.Parent = pcFrame
+
+	local pcPageLabel = Instance.new("TextLabel")
+	pcPageLabel.Name = "PCPageLabel"
+	pcPageLabel.Size = UDim2.new(0, 160, 0, 22)
+	pcPageLabel.Position = UDim2.new(0, 0, 0, 26)
+	pcPageLabel.BackgroundTransparency = 1
+	pcPageLabel.TextColor3 = Color3.new(1, 1, 1)
+	pcPageLabel.Font = Enum.Font.Gotham
+	pcPageLabel.TextSize = 14
+	pcPageLabel.TextXAlignment = Enum.TextXAlignment.Left
+	pcPageLabel.Text = "Box 1 / 1"
+	pcPageLabel.Parent = pcFrame
+
+	local pcPrevButton = Instance.new("TextButton")
+	pcPrevButton.Name = "PCPrevButton"
+	pcPrevButton.Size = UDim2.new(0, 28, 0, 22)
+	pcPrevButton.Position = UDim2.new(0, 170, 0, 26)
+	pcPrevButton.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+	pcPrevButton.TextColor3 = Color3.new(1, 1, 1)
+	pcPrevButton.Font = Enum.Font.GothamBold
+	pcPrevButton.TextSize = 14
+	pcPrevButton.Text = "<"
+	pcPrevButton.Parent = pcFrame
+
+	local pcNextButton = Instance.new("TextButton")
+	pcNextButton.Name = "PCNextButton"
+	pcNextButton.Size = UDim2.new(0, 28, 0, 22)
+	pcNextButton.Position = UDim2.new(0, 204, 0, 26)
+	pcNextButton.BackgroundColor3 = Color3.fromRGB(40, 40, 70)
+	pcNextButton.TextColor3 = Color3.new(1, 1, 1)
+	pcNextButton.Font = Enum.Font.GothamBold
+	pcNextButton.TextSize = 14
+	pcNextButton.Text = ">"
+	pcNextButton.Parent = pcFrame
+
+	local pcList = Instance.new("Frame")
+	pcList.Name = "PCList"
+	pcList.Size = UDim2.new(0.52, 0, 1, -54)
+	pcList.Position = UDim2.new(0, 0, 0, 54)
+	pcList.BackgroundTransparency = 1
+	pcList.Parent = pcFrame
+
+	local pcLayout = Instance.new("UIGridLayout")
+	pcLayout.CellSize = UDim2.new(0, 110, 0, 60)
+	pcLayout.CellPadding = UDim2.new(0, 6, 0, 6)
+	pcLayout.FillDirection = Enum.FillDirection.Horizontal
+	pcLayout.FillDirectionMaxCells = 5
+	pcLayout.Parent = pcList
+
+	local pcDetail = Instance.new("TextLabel")
+	pcDetail.Name = "PCDetail"
+	pcDetail.Size = UDim2.new(0.46, 0, 1, -90)
+	pcDetail.Position = UDim2.new(0.54, 0, 0, 54)
+	pcDetail.BackgroundTransparency = 1
+	pcDetail.TextColor3 = Color3.new(1, 1, 1)
+	pcDetail.Font = Enum.Font.Gotham
+	pcDetail.TextSize = 16
+	pcDetail.TextXAlignment = Enum.TextXAlignment.Left
+	pcDetail.TextYAlignment = Enum.TextYAlignment.Top
+	pcDetail.TextWrapped = true
+	pcDetail.Text = "Select a brainrot on the left to see details."
+	pcDetail.Parent = pcFrame
+
+	local pcErrorLabel = Instance.new("TextLabel")
+	pcErrorLabel.Name = "PCError"
+	pcErrorLabel.Size = UDim2.new(0.46, 0, 0, 24)
+	pcErrorLabel.Position = UDim2.new(0.54, 0, 1, -30)
+	pcErrorLabel.BackgroundTransparency = 1
+	pcErrorLabel.TextColor3 = Color3.fromRGB(255, 160, 160)
+	pcErrorLabel.Font = Enum.Font.Gotham
+	pcErrorLabel.TextSize = 14
+	pcErrorLabel.TextXAlignment = Enum.TextXAlignment.Left
+	pcErrorLabel.Text = ""
+	pcErrorLabel.Parent = pcFrame
+
+	local pcButtonsFrame = Instance.new("Frame")
+	pcButtonsFrame.Name = "PCButtons"
+	pcButtonsFrame.Size = UDim2.new(0.46, 0, 0, 26)
+	pcButtonsFrame.Position = UDim2.new(0.54, 0, 0, 28)
+	pcButtonsFrame.BackgroundTransparency = 1
+	pcButtonsFrame.Parent = pcFrame
+
+	local pcButtonsLayout = Instance.new("UIListLayout")
+	pcButtonsLayout.FillDirection = Enum.FillDirection.Horizontal
+	pcButtonsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	pcButtonsLayout.Padding = UDim.new(0, 6)
+	pcButtonsLayout.Parent = pcButtonsFrame
+
+	local function createPCActionButton(name: string, label: string)
+		local button = Instance.new("TextButton")
+		button.Name = name
+		button.Size = UDim2.new(0, 110, 1, 0)
+		button.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+		button.TextColor3 = Color3.new(1, 1, 1)
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 14
+		button.TextXAlignment = Enum.TextXAlignment.Center
+		button.Text = label
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = button
+
+		button.Parent = pcButtonsFrame
+		return button
+	end
+
+	local pcAddToPartyButton = createPCActionButton("AddToPartyButton", "Add to Party")
+	local pcSwapWithPartyButton = createPCActionButton("SwapWithPartyButton", "Swap with Party")
+	local pcReleaseButton = createPCActionButton("PCReleaseButton", "Release")
+
 	local function hideAllContent()
 		bagList.Visible = false
 		trainerFrame.Visible = false
 		dexList.Visible = false
 		settingsFrame.Visible = false
 		brainrotsFrame.Visible = false
+		pcFrame.Visible = false
 	end
 
 	local currentSelectedPartyIndex: number? = nil
+	local pcSelectedCollectionIndex: number? = nil
+	local PC_SLOTS_PER_PAGE = 30
+	local pcCurrentPage = 1
 
 	local function refreshTrainerData()
 		local data = GetTrainerData:InvokeServer()
@@ -1362,10 +1517,93 @@ local function createMenuGui()
 			end
 		end
 
+		local function rebuildPC()
+			clearChildren(pcList)
+			pcLayout.Parent = pcList
+
+			local collection = data.collection or {}
+			local total = #collection
+			if total == 0 then
+				pcCurrentPage = 1
+				pcPageLabel.Text = "Box 1 / 1"
+				pcDetail.Text = "No brainrots in storage yet."
+				pcErrorLabel.Text = ""
+				pcSelectedCollectionIndex = nil
+				return
+			end
+
+			local totalPages = math.max(1, math.ceil(total / PC_SLOTS_PER_PAGE))
+			if pcCurrentPage > totalPages then
+				pcCurrentPage = totalPages
+			end
+
+			pcPageLabel.Text = string.format("Box %d / %d", pcCurrentPage, totalPages)
+			pcErrorLabel.Text = ""
+
+			local startIndex = (pcCurrentPage - 1) * PC_SLOTS_PER_PAGE + 1
+			local endIndex = math.min(startIndex + PC_SLOTS_PER_PAGE - 1, total)
+
+			for globalIndex = startIndex, endIndex do
+				local entry = collection[globalIndex]
+				if entry then
+					local slot = Instance.new("TextButton")
+					slot.Size = UDim2.new(0, 110, 0, 60)
+					slot.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+					slot.TextColor3 = Color3.new(1, 1, 1)
+					slot.Font = Enum.Font.Gotham
+					slot.TextSize = 14
+					slot.TextWrapped = true
+
+					local labelText = string.format("%s\nLv.%d", entry.displayName or entry.id, entry.level or 1)
+					if entry.isInParty and entry.partyIndex then
+						labelText ..= string.format("\n(In party %d)", entry.partyIndex)
+					end
+					slot.Text = labelText
+					slot.Parent = pcList
+
+					local corner = Instance.new("UICorner")
+					corner.CornerRadius = UDim.new(0, 6)
+					corner.Parent = slot
+
+					slot.MouseButton1Click:Connect(function()
+						pcSelectedCollectionIndex = globalIndex
+
+						local detailText = string.format(
+							"%s Lv.%d\nHP: %d/%d",
+							entry.displayName or entry.id,
+							entry.level or 1,
+							entry.hp or 0,
+							entry.maxHP or 0
+						)
+
+						local def = Brainrots.getById(entry.id)
+						if def and def.moves then
+							detailText ..= "\n\nMoves:\n"
+							for _, move in ipairs(def.moves) do
+								detailText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
+							end
+						end
+
+						if entry.isInParty and entry.partyIndex then
+							detailText ..= string.format("\nCurrently in party slot %d.", entry.partyIndex)
+						end
+
+						pcDetail.Text = detailText
+					end)
+				end
+			end
+
+			if not pcSelectedCollectionIndex or pcSelectedCollectionIndex < 1 or pcSelectedCollectionIndex > total then
+				pcSelectedCollectionIndex = nil
+				pcDetail.Text = "Select a brainrot on the left to see details."
+			end
+		end
+
 		rebuildBag()
 		rebuildTrainerCard()
 		rebuildDex()
 		rebuildBrainrots()
+		rebuildPC()
 	end
 
 	local function openSection(section: string)
@@ -1390,6 +1628,9 @@ local function createMenuGui()
 		elseif section == "brainrots" then
 			contentLabel.Text = "Brainrots"
 			brainrotsFrame.Visible = true
+		elseif section == "pc" then
+			contentLabel.Text = "PC / Boxes"
+			pcFrame.Visible = true
 		end
 
 		refreshTrainerData()
@@ -1417,6 +1658,10 @@ local function createMenuGui()
 
 	brainrotsButton.MouseButton1Click:Connect(function()
 		openSection("brainrots")
+	end)
+
+	pcButton.MouseButton1Click:Connect(function()
+		openSection("pc")
 	end)
 
 	setHeldButton.MouseButton1Click:Connect(function()
@@ -1512,6 +1757,149 @@ local function createMenuGui()
 		ReleaseBrainrot:FireServer(currentSelectedPartyIndex)
 		currentSelectedPartyIndex = nil
 		refreshTrainerData()
+	end)
+
+	sendToPCButton.MouseButton1Click:Connect(function()
+		if not currentSelectedPartyIndex then
+			return
+		end
+
+		local ok, err = MoveBrainrotBetweenPartyAndCollection:InvokeServer(currentSelectedPartyIndex, nil)
+		if not ok and err then
+			brainrotDetail.Text = tostring(err)
+		else
+			currentSelectedPartyIndex = nil
+			refreshTrainerData()
+		end
+	end)
+
+	pcPrevButton.MouseButton1Click:Connect(function()
+		if pcCurrentPage > 1 then
+			pcCurrentPage -= 1
+			refreshTrainerData()
+		end
+	end)
+
+	pcNextButton.MouseButton1Click:Connect(function()
+		pcCurrentPage += 1
+		refreshTrainerData()
+	end)
+
+	pcAddToPartyButton.MouseButton1Click:Connect(function()
+		if not pcSelectedCollectionIndex then
+			return
+		end
+
+		local ok, err = MoveBrainrotBetweenPartyAndCollection:InvokeServer(nil, pcSelectedCollectionIndex)
+		if not ok and err then
+			pcErrorLabel.Text = tostring(err)
+		else
+			pcErrorLabel.Text = ""
+			refreshTrainerData()
+		end
+	end)
+
+	pcSwapWithPartyButton.MouseButton1Click:Connect(function()
+		if not pcSelectedCollectionIndex then
+			return
+		end
+
+		local data = GetTrainerData:InvokeServer()
+		if not data then
+			return
+		end
+
+		local party = data.party or {}
+		if #party == 0 then
+			return
+		end
+
+		local overlay = Instance.new("ScreenGui")
+		overlay.Name = "PCSwapChooser"
+		overlay.ResetOnSpawn = false
+		overlay.IgnoreGuiInset = true
+		overlay.Parent = PlayerGui
+
+		local panel = Instance.new("Frame")
+		panel.Size = UDim2.new(0, 260, 0, 40 + #party * 26)
+		panel.AnchorPoint = Vector2.new(0.5, 0.5)
+		panel.Position = UDim2.new(0.5, 0, 0.5, 0)
+		panel.BackgroundColor3 = Color3.fromRGB(15, 15, 30)
+		panel.Parent = overlay
+
+		local panelCorner = Instance.new("UICorner")
+		panelCorner.CornerRadius = UDim.new(0, 8)
+		panelCorner.Parent = panel
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, -10, 0, 24)
+		title.Position = UDim2.new(0, 5, 0, 4)
+		title.BackgroundTransparency = 1
+		title.TextColor3 = Color3.new(1, 1, 1)
+		title.Font = Enum.Font.GothamBold
+		title.TextSize = 16
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.Text = "Choose party slot to swap"
+		title.Parent = panel
+
+		local listFrame = Instance.new("Frame")
+		listFrame.Size = UDim2.new(1, -10, 1, -32)
+		listFrame.Position = UDim2.new(0, 5, 0, 28)
+		listFrame.BackgroundTransparency = 1
+		listFrame.Parent = panel
+
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.FillDirection = Enum.FillDirection.Vertical
+		listLayout.Padding = UDim.new(0, 4)
+		listLayout.Parent = listFrame
+
+		for index, mon in ipairs(party) do
+			local b = Instance.new("TextButton")
+			b.Size = UDim2.new(1, 0, 0, 22)
+			b.BackgroundColor3 = Color3.fromRGB(35, 35, 60)
+			b.TextColor3 = Color3.new(1, 1, 1)
+			b.Font = Enum.Font.Gotham
+			b.TextSize = 14
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			b.Text = string.format(" Slot %d: %s Lv.%d", index, mon.displayName, mon.level)
+			b.Parent = listFrame
+
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 6)
+			c.Parent = b
+
+			b.MouseButton1Click:Connect(function()
+				local okSwap, errSwap =
+					MoveBrainrotBetweenPartyAndCollection:InvokeServer(index, pcSelectedCollectionIndex)
+				if not okSwap and errSwap then
+					pcErrorLabel.Text = tostring(errSwap)
+				else
+					pcErrorLabel.Text = ""
+					refreshTrainerData()
+				end
+				overlay:Destroy()
+			end)
+		end
+	end)
+
+	pcReleaseButton.MouseButton1Click:Connect(function()
+		if not pcSelectedCollectionIndex then
+			return
+		end
+
+		local ok, err = ReleaseFromCollection:InvokeServer(pcSelectedCollectionIndex)
+		if not ok and err then
+			pcErrorLabel.Text = tostring(err)
+		else
+			pcErrorLabel.Text = ""
+			pcSelectedCollectionIndex = nil
+			refreshTrainerData()
+		end
+	end)
+
+	OpenPC.OnClientEvent:Connect(function()
+		menuFrame.Visible = true
+		openSection("pc")
 	end)
 end
 
