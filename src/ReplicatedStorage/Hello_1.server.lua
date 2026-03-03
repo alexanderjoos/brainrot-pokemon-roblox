@@ -1,1 +1,0 @@
-print("ROJO PIPELINE WORKS")
