@@ -324,7 +324,7 @@ local function createBattleGui()
 					entry.displayName,
 					entry.quantity or 1
 				)
-				local ballIds = { ["troppi_ball"] = true, ["super_ball"] = true, ["ultra_ball"] = true }
+				local ballIds = { ["troppi_ball"] = true, ["super_ball"] = true, ["ultra_ball"] = true, ["master_ball"] = true }
 				if ballIds[entry.id] then
 					BattleRequest:FireServer("capture", entry.id)
 				else
@@ -468,13 +468,21 @@ local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: nu
 end
 
 BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
+	local battleEnded = battleState.state ~= "ongoing"
+
 	local gui = ensureBattleGui()
 	local frame = gui:FindFirstChild("Frame") :: Frame
 	if not frame then
+		if battleEnded then
+			cleanupBattleScene()
+			if battleGui then
+				battleGui:Destroy()
+				battleGui = nil
+			end
+		end
 		return
 	end
 
-	-- Update or create healthbars above battle models
 	if battlePlayerModel and battleState.playerBrainrot then
 		local mon = battleState.playerBrainrot
 		if not battlePlayerHealthbarFill or not battlePlayerHealthbarFill.Parent then
@@ -568,6 +576,20 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		messageLabel.Text = message or ""
 	end
 
+	if battleEnded then
+		if interactFrame then
+			interactFrame.Visible = false
+		end
+		task.delay(3, function()
+			cleanupBattleScene()
+			if battleGui then
+				battleGui:Destroy()
+				battleGui = nil
+			end
+		end)
+		return
+	end
+
 	if fightFrame and battleState.playerBrainrot then
 		local movesList = fightFrame:FindFirstChild("MovesList") :: Frame
 		if movesList then
@@ -609,15 +631,6 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 			end
 		end
 	end
-
-	if battleState.state ~= "ongoing" then
-		task.delay(3, function()
-			if battleGui then
-				battleGui:Destroy()
-				battleGui = nil
-			end
-		end)
-	end
 end)
 
 local function cleanupBattleScene()
@@ -629,6 +642,10 @@ local function cleanupBattleScene()
 	battleEnemyModel = nil
 	battlePlayerHealthbarFill = nil
 	battleEnemyHealthbarFill = nil
+	if battleGui then
+		battleGui:Destroy()
+		battleGui = nil
+	end
 end
 
 local function createSimpleBattleArena(originPos: Vector3)
