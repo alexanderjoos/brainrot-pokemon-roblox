@@ -1264,7 +1264,7 @@ UseItemOutsideBattle.OnServerInvoke = function(player: Player, itemId: string, p
 		return true, "You revived " .. mon.displayName .. " with " .. itemDef.displayName .. "!"
 	end
 	return true, "You used " .. itemDef.displayName .. " on " .. mon.displayName .. "!"
-end)
+end
 
 MoveBrainrotBetweenPartyAndCollection.OnServerInvoke = function(player: Player, partyIndex: number?, collectionIndex: number?)
 	local data = playerData[player]
