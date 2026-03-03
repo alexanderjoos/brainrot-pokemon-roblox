@@ -318,25 +318,23 @@ function module.calculateDamage(attacker, defender, move)
 
 	defense = math.max(defense, 1)
 
-	-- Simple level‑scaled physical damage formula
 	local base =
 		(((2 * level) / 5 + 2) * power * attack / defense) / 50
 
 	local variance = math.random(85, 100) / 100
 	local damage = math.floor((base + 2) * variance)
 
-	-- Type effectiveness
 	local attackType = move.type or "Neutral"
 	local def = Brainrots[defender.id]
 	local defendType = def and def.type or "Neutral"
-	damage = math.floor(damage * module.getTypeEffectiveness(attackType, defendType))
+	local effectiveness = module.getTypeEffectiveness(attackType, defendType)
+	damage = math.floor(damage * effectiveness)
 
-	-- Held item: sigma_shield reduces incoming damage by 20%
 	if (defender :: any).heldItemId == "sigma_shield" then
 		damage = math.floor(damage * 0.8)
 	end
 
-	return math.max(damage, 1)
+	return math.max(damage, 1), effectiveness
 end
 
 return module

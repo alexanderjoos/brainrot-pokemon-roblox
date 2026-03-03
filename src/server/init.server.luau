@@ -321,31 +321,40 @@ local function chooseEnemyMove(enemy: BrainrotInstance)
 	return moves[index]
 end
 
+local function effectivenessText(eff: number): string
+	if eff >= 1.5 then
+		return " It's super effective!"
+	elseif eff <= 0.5 then
+		return " It's not very effective..."
+	end
+	return ""
+end
+
 local function performAttack(attacker: BrainrotInstance, defender: BrainrotInstance, move)
 	if not move then
-		return 0, false
+		return 0, false, 1
 	end
 
 	local hitChance = move.accuracy or 1
 	if math.random() > hitChance then
-		return 0, false
+		return 0, false, 1
 	end
 
-	local damage = Brainrots.calculateDamage(attacker, defender, move)
+	local damage, eff = Brainrots.calculateDamage(attacker, defender, move)
 	defender.hp = math.max(defender.hp - damage, 0)
-	return damage, true
+	return damage, true, eff
 end
 
 local function computeAttackResult(attacker: BrainrotInstance, defender: BrainrotInstance, move)
 	if not move then
-		return 0, false
+		return 0, false, 1
 	end
 	local hitChance = move.accuracy or 1
 	if math.random() > hitChance then
-		return 0, false
+		return 0, false, 1
 	end
-	local damage = Brainrots.calculateDamage(attacker, defender, move)
-	return damage, true
+	local damage, eff = Brainrots.calculateDamage(attacker, defender, move)
+	return damage, true, eff
 end
 
 local function enemyRespond(player: Player, battle: BattleState, playerMon: BrainrotInstance, enemyMon: BrainrotInstance)
@@ -358,7 +367,7 @@ local function enemyRespond(player: Player, battle: BattleState, playerMon: Brai
 	end
 
 	local enemyMove = chooseEnemyMove(enemyMon)
-	local enemyDamage, enemyHit = performAttack(enemyMon, playerMon, enemyMove)
+	local enemyDamage, enemyHit, enemyEff = performAttack(enemyMon, playerMon, enemyMove)
 
 	if playerMon.hp <= 0 then
 		battle.state = "lost"
@@ -367,10 +376,11 @@ local function enemyRespond(player: Player, battle: BattleState, playerMon: Brai
 			data.stats.battlesLost += 1
 		end
 		local msg = string.format(
-			"%s used %s and dealt %d damage! Your brainrot fainted!",
+			"%s used %s and dealt %d damage!%s Your brainrot fainted!",
 			enemyMon.displayName,
 			enemyMove and enemyMove.name or "an attack",
-			enemyDamage
+			enemyDamage,
+			effectivenessText(enemyEff)
 		)
 		sendBattleUpdate(player, battle, msg)
 		endBattleForPlayer(player, "lost")
@@ -380,10 +390,11 @@ local function enemyRespond(player: Player, battle: BattleState, playerMon: Brai
 	local msg
 	if enemyHit then
 		msg = string.format(
-			"%s used %s and dealt %d damage!",
+			"%s used %s and dealt %d damage!%s",
 			enemyMon.displayName,
 			enemyMove and enemyMove.name or "an attack",
-			enemyDamage
+			enemyDamage,
+			effectivenessText(enemyEff)
 		)
 	else
 		msg = string.format("%s's attack missed!", enemyMon.displayName)
@@ -624,7 +635,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			end)
 		else
 			local enemyMove = chooseEnemyMove(enemyMon)
-			local damage, hit = performAttack(enemyMon, playerMon, enemyMove)
+			local damage, hit, eff = performAttack(enemyMon, playerMon, enemyMove)
 
 			if playerMon.hp <= 0 then
 				battle.state = "lost"
@@ -633,7 +644,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			else
 				local msg = "Capture failed!"
 				if hit then
-					msg ..= " " .. enemyMon.displayName .. " used " .. enemyMove.name .. " and dealt " .. tostring(damage) .. " damage!"
+					msg ..= " " .. enemyMon.displayName .. " used " .. enemyMove.name .. " and dealt " .. tostring(damage) .. " damage!" .. effectivenessText(eff)
 				end
 				sendBattleUpdate(player, battle, msg)
 			end
@@ -759,13 +770,13 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 		local enemyMove = chooseEnemyMove(enemyMon)
 		local enemySkip, enemySkipMsg = checkStatusSkipTurn(enemyMon)
 
-		local playerDamage, playerHit = 0, false
+		local playerDamage, playerHit, playerEff = 0, false, 1
 		if not playerSkip then
-			playerDamage, playerHit = computeAttackResult(playerMon, enemyMon, chosenMove)
+			playerDamage, playerHit, playerEff = computeAttackResult(playerMon, enemyMon, chosenMove)
 		end
-		local enemyDamage, enemyHit = 0, false
+		local enemyDamage, enemyHit, enemyEff = 0, false, 1
 		if not enemySkip then
-			enemyDamage, enemyHit = computeAttackResult(enemyMon, playerMon, enemyMove)
+			enemyDamage, enemyHit, enemyEff = computeAttackResult(enemyMon, playerMon, enemyMove)
 		end
 
 		local playerSpeed = playerMon.speed or 5
