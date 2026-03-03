@@ -16,11 +16,10 @@ local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: Re
 local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: RemoteEvent
 local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
 local MoveBrainrotBetweenPartyAndCollection: RemoteFunction =
-	(RemotesFolder:FindFirstChild("MoveBrainrotBetweenPartyAndCollection") or RemotesFolder:WaitForChild("MoveBrainrotBetweenPartyAndCollection", 15)) :: RemoteFunction
+	RemotesFolder:WaitForChild("MoveBrainrotBetweenPartyAndCollection") :: RemoteFunction
 local ReleaseFromCollection: RemoteFunction =
-	(RemotesFolder:FindFirstChild("ReleaseFromCollection") or RemotesFolder:WaitForChild("ReleaseFromCollection", 15)) :: RemoteFunction
-local OpenPC: RemoteEvent =
-	(RemotesFolder:FindFirstChild("OpenPC") or RemotesFolder:WaitForChild("OpenPC", 15)) :: RemoteEvent
+	RemotesFolder:WaitForChild("ReleaseFromCollection") :: RemoteFunction
+local OpenPC: RemoteEvent = RemotesFolder:WaitForChild("OpenPC") :: RemoteEvent
 local BattleInvite: RemoteEvent = RemotesFolder:FindFirstChild("BattleInvite") or RemotesFolder:WaitForChild("BattleInvite") :: RemoteEvent
 local BattleInviteResponse: RemoteEvent = RemotesFolder:FindFirstChild("BattleInviteResponse") or RemotesFolder:WaitForChild("BattleInviteResponse") :: RemoteEvent
 local SetSettings: RemoteEvent = RemotesFolder:FindFirstChild("SetSettings") or RemotesFolder:WaitForChild("SetSettings") :: RemoteEvent
