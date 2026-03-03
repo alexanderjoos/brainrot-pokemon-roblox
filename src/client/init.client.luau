@@ -429,6 +429,44 @@ local function formatDiag(brainrot)
 	return name, hpText
 end
 
+local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: number): (BillboardGui, Frame)
+	local attachPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
+	if not attachPart then
+		return nil, nil
+	end
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "Healthbar"
+	billboard.Size = UDim2.new(0, 80, 0, 12)
+	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+	billboard.AlwaysOnTop = true
+	billboard.Parent = attachPart
+
+	local bg = Instance.new("Frame")
+	bg.Name = "Background"
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
+	bg.BorderSizePixel = 0
+	bg.Parent = billboard
+
+	local bgCorner = Instance.new("UICorner")
+	bgCorner.CornerRadius = UDim.new(0, 2)
+	bgCorner.Parent = bg
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(math.clamp(currentHP / math.max(maxHP, 1), 0, 1), 0, 1, 0)
+	fill.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+	fill.BorderSizePixel = 0
+	fill.Parent = bg
+
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 2)
+	fillCorner.Parent = fill
+
+	return billboard, fill
+end
+
 BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 	local gui = ensureBattleGui()
 	local frame = gui:FindFirstChild("Frame") :: Frame
@@ -611,44 +649,6 @@ local function createSimpleBattleArena(originPos: Vector3)
 	arenaFloor.Parent = battleArenaModel
 
 	return originPos
-end
-
-local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: number): (BillboardGui, Frame)
-	local attachPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
-	if not attachPart then
-		return nil, nil
-	end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Healthbar"
-	billboard.Size = UDim2.new(0, 80, 0, 12)
-	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
-	billboard.AlwaysOnTop = true
-	billboard.Parent = attachPart
-
-	local bg = Instance.new("Frame")
-	bg.Name = "Background"
-	bg.Size = UDim2.new(1, 0, 1, 0)
-	bg.BackgroundColor3 = Color3.fromRGB(40, 20, 20)
-	bg.BorderSizePixel = 0
-	bg.Parent = billboard
-
-	local bgCorner = Instance.new("UICorner")
-	bgCorner.CornerRadius = UDim.new(0, 2)
-	bgCorner.Parent = bg
-
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.new(math.clamp(currentHP / math.max(maxHP, 1), 0, 1), 0, 1, 0)
-	fill.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-	fill.BorderSizePixel = 0
-	fill.Parent = bg
-
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 2)
-	fillCorner.Parent = fill
-
-	return billboard, fill
 end
 
 local function spawnBrainrotModel(brainrotId: string, position: Vector3, facing: CFrame)
