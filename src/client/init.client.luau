@@ -905,6 +905,24 @@ local function createMenuGui()
 	trainerImage.ScaleType = Enum.ScaleType.Fit
 	trainerImage.Parent = trainerFrame
 
+	local trainerImageStroke = Instance.new("UIStroke")
+	trainerImageStroke.Thickness = 3
+	trainerImageStroke.Color = Color3.fromRGB(120, 80, 40)
+	trainerImageStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	trainerImageStroke.Parent = trainerImage
+
+	local trainerLevelLabel = Instance.new("TextLabel")
+	trainerLevelLabel.Name = "TrainerLevel"
+	trainerLevelLabel.Size = UDim2.new(1, 0, 0, 24)
+	trainerLevelLabel.Position = UDim2.new(0, 0, 0, 308)
+	trainerLevelLabel.BackgroundTransparency = 1
+	trainerLevelLabel.TextColor3 = Color3.new(1, 1, 1)
+	trainerLevelLabel.Font = Enum.Font.GothamBold
+	trainerLevelLabel.TextSize = 16
+	trainerLevelLabel.TextXAlignment = Enum.TextXAlignment.Center
+	trainerLevelLabel.Text = ""
+	trainerLevelLabel.Parent = trainerFrame
+
 	local badgesFrame = Instance.new("Frame")
 	badgesFrame.Name = "BadgesFrame"
 	badgesFrame.Size = UDim2.new(1, -20, 0, 40)
@@ -1132,6 +1150,19 @@ local function createMenuGui()
 				stats.battlesWon or 0,
 				stats.battlesLost or 0
 			)
+
+			local wins = stats.battlesWon or 0
+			local trainerLevelTitle
+			if wins < 10 then
+				trainerLevelTitle = "Low-level zero rebirth brainrotter"
+			elseif wins < 30 then
+				trainerLevelTitle = "Mid-tier meme wrangler"
+			elseif wins < 60 then
+				trainerLevelTitle = "High-level sigma strategist"
+			else
+				trainerLevelTitle = "Ascended giga-brainrot overlord"
+			end
+			trainerLevelLabel.Text = trainerLevelTitle
 
 			local dexSeen = data.dexSeen or {}
 			local dexCaught = data.dexCaught or {}
