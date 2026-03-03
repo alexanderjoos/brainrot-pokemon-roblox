@@ -2789,11 +2789,12 @@ itemPopupGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 itemPopupGui.Parent = PlayerGui
 
 ItemAcquired.OnClientEvent:Connect(function(itemId: string, displayName: string, quantity: number)
-	local overlay = Instance.new("Frame")
+	local overlay = Instance.new("TextButton")
 	overlay.Name = "ItemPopupOverlay"
 	overlay.Size = UDim2.new(1, 0, 1, 0)
 	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
 	overlay.BackgroundTransparency = 0.5
+	overlay.Text = ""
 	overlay.Parent = itemPopupGui
 
 	local popup = Instance.new("Frame")
