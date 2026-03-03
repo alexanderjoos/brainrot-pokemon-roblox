@@ -775,14 +775,14 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			end
 			if enemyMon.hp <= 0 then
 				battle.state = "won"
-			local data = playerData[player]
-			local expGain = calculateExpGain(playerMon, enemyMon)
-			if data then
-				data.stats.battlesWon += 1
-				markDexCaught(data, enemyMon.id)
-				grantExpAndNotifyLevelUp(player, playerMon, expGain)
-			end
-			sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted! +" .. tostring(expGain) .. " EXP!")
+				local data = playerData[player]
+				local expGain = calculateExpGain(playerMon, enemyMon)
+				if data then
+					data.stats.battlesWon += 1
+					markDexCaught(data, enemyMon.id)
+					grantExpAndNotifyLevelUp(player, playerMon, expGain)
+				end
+				sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted! +" .. tostring(expGain) .. " EXP!")
 				endBattleForPlayer(player, "won")
 				return
 			end
