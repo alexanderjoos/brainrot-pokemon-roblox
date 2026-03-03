@@ -151,8 +151,11 @@ local function applyContentToBrainrot(id: string, data: any)
 end
 
 local function initFromModels()
-	local modelsFolder = ReplicatedStorage:FindFirstChild("BrainrotList") or ReplicatedStorage:FindFirstChild("BrainrotModels")
+	local modelsFolder = ReplicatedStorage:FindFirstChild("BrainrotList")
+		or ReplicatedStorage:FindFirstChild("BrainrotModels")
+		or ReplicatedStorage:WaitForChild("BrainrotModels", 10)
 	if not modelsFolder then
+		warn("[Brainrots] BrainrotModels folder not found in ReplicatedStorage")
 		return
 	end
 
