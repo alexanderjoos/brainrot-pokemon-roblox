@@ -495,6 +495,21 @@ local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: nu
 	return billboard, fill
 end
 
+local function cleanupBattleScene()
+	if battleArenaModel then
+		battleArenaModel:Destroy()
+		battleArenaModel = nil
+	end
+	battlePlayerModel = nil
+	battleEnemyModel = nil
+	battlePlayerHealthbarFill = nil
+	battleEnemyHealthbarFill = nil
+	if battleGui then
+		battleGui:Destroy()
+		battleGui = nil
+	end
+end
+
 BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 	local battleEnded = battleState.state ~= "ongoing"
 
@@ -658,21 +673,6 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		end
 	end
 end)
-
-local function cleanupBattleScene()
-	if battleArenaModel then
-		battleArenaModel:Destroy()
-		battleArenaModel = nil
-	end
-	battlePlayerModel = nil
-	battleEnemyModel = nil
-	battlePlayerHealthbarFill = nil
-	battleEnemyHealthbarFill = nil
-	if battleGui then
-		battleGui:Destroy()
-		battleGui = nil
-	end
-end
 
 local function createSimpleBattleArena(originPos: Vector3)
 	cleanupBattleScene()
