@@ -1342,7 +1342,7 @@ ReleaseFromCollection.OnServerInvoke = function(player: Player, collectionIndex:
 	return true
 end
 
-local SCHEMA_VERSION = 1
+local SCHEMA_VERSION = 2
 
 local function serializeTrainerData(data: TrainerData): string
 	return HttpService:JSONEncode({
@@ -1358,15 +1358,57 @@ local function serializeTrainerData(data: TrainerData): string
 	})
 end
 
+-- data-6: statusEffect/statusTurns persist via serialized party/collection (no extra handling needed)
+-- data-7: Migrate expanded brainrot definitions (type, moves from content-1)
+local function migrateBrainrot(mon: any): any
+	if not mon or type(mon) ~= "table" then
+		return mon
+	end
+
+	-- data-7: Migration for expanded brainrot definitions (type, moves from content-1)
+	local base = Brainrots.getById(mon.id)
+	if base then
+		if not mon.type or mon.type == "" then
+			mon.type = base.type or "Neutral"
+		end
+		if not mon.moves or #mon.moves == 0 then
+			mon.moves = {}
+			for _, m in ipairs(base.moves or {}) do
+				table.insert(mon.moves, {
+					id = m.id,
+					name = m.name,
+					power = m.power,
+					accuracy = m.accuracy,
+					type = m.type or "Neutral",
+					statusEffect = m.statusEffect,
+					statusChance = m.statusChance,
+				})
+			end
+		end
+	end
+	return mon
+end
+
 local function migrateTrainerData(decoded: any): TrainerData?
 	local version = decoded.schemaVersion or 0
 	if version < 1 then
 		decoded.stats = decoded.stats or {}
 		decoded.stats.totalReleased = decoded.stats.totalReleased or 0
 	end
+
+	-- data-6 & data-7: Migrate each brainrot in party and collection
+	local party = decoded.party or {}
+	local collection = decoded.collection or {}
+	for _, mon in ipairs(party) do
+		migrateBrainrot(mon)
+	end
+	for _, mon in ipairs(collection) do
+		migrateBrainrot(mon)
+	end
+
 	return {
-		party = decoded.party or {},
-		collection = decoded.collection or {},
+		party = party,
+		collection = collection,
 		activeIndex = decoded.activeIndex or 1,
 		bag = decoded.bag or {},
 		stats = decoded.stats or {
@@ -1439,6 +1481,13 @@ Players.PlayerAdded:Connect(function(player)
 			dexCaught = {},
 			settings = { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 },
 		}
+		-- data-8: Give new players 5 Troppi balls and 5 Henny
+		for _ = 1, 5 do
+			addToBag(data, "troppi_ball")
+		end
+		for _ = 1, 5 do
+			addToBag(data, "henny")
+		end
 	end
 	if not data.settings then
 		data.settings = { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 }
