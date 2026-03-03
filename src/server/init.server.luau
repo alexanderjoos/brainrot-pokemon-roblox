@@ -42,6 +42,7 @@ type TrainerStats = {
 	totalCaught: number,
 	battlesWon: number,
 	battlesLost: number,
+	totalReleased: number,
 }
 
 type BagItem = {
@@ -64,6 +65,7 @@ local playerData: { [Player]: TrainerData } = {}
 local activeBattles: { [Player]: BattleState } = {}
 
 local MAX_PARTY_SIZE = 6
+local COLLECTION_CAP = 200
 local TOWN_HALF_X = 135
 local TOWN_HALF_Z = 135
 
@@ -338,14 +340,22 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 		if math.random() < captureChance then
 			local data = playerData[player]
 			if data then
-				table.insert(data.collection, enemyMon)
+				if #data.collection >= COLLECTION_CAP then
+					sendBattleUpdate(
+						player,
+						battle,
+						"Your collection is full! You couldn't keep the captured brainrot."
+					)
+				else
+					table.insert(data.collection, enemyMon)
 
-				if #data.party < MAX_PARTY_SIZE then
-					table.insert(data.party, enemyMon)
+					if #data.party < MAX_PARTY_SIZE then
+						table.insert(data.party, enemyMon)
+					end
+
+					data.stats.totalCaught += 1
+					markDexCaught(data, enemyMon.id)
 				end
-
-				data.stats.totalCaught += 1
-				markDexCaught(data, enemyMon.id)
 			end
 			battle.state = "finished"
 			sendBattleUpdate(player, battle, "You captured " .. enemyMon.displayName .. "!")
@@ -545,6 +555,29 @@ local function createTrainerSnapshot(player: Player)
 		snapshotParty[i] = mon
 	end
 
+	local snapshotCollection = {}
+	for i, mon in ipairs(data.collection) do
+		local inParty = false
+		local partyIndex: number? = nil
+		for pIndex, pMon in ipairs(data.party) do
+			if pMon == mon then
+				inParty = true
+				partyIndex = pIndex
+				break
+			end
+		end
+
+		snapshotCollection[i] = {
+			id = mon.id,
+			displayName = mon.displayName,
+			level = mon.level,
+			hp = mon.hp,
+			maxHP = mon.maxHP,
+			isInParty = inParty,
+			partyIndex = partyIndex,
+		}
+	end
+
 	local snapshotBag = {}
 	for i, entry in ipairs(data.bag) do
 		local itemDef = Items.getById(entry.id)
@@ -563,11 +596,13 @@ local function createTrainerSnapshot(player: Player)
 			totalCaught = data.stats.totalCaught,
 			battlesWon = data.stats.battlesWon,
 			battlesLost = data.stats.battlesLost,
+			totalReleased = data.stats.totalReleased or 0,
 		},
 		party = snapshotParty,
 		bag = snapshotBag,
 		dexSeen = data.dexSeen,
 		dexCaught = data.dexCaught,
+		collection = snapshotCollection,
 		leaderIndex = data.activeIndex,
 	}
 end
@@ -774,6 +809,7 @@ Players.PlayerAdded:Connect(function(player)
 			totalCaught = 0,
 			battlesWon = 0,
 			battlesLost = 0,
+			totalReleased = 0,
 		},
 		dexSeen = {},
 		dexCaught = {},
