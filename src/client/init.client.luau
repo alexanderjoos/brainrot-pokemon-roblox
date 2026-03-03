@@ -21,7 +21,7 @@ local ReleaseFromCollection: RemoteFunction =
 	RemotesFolder:WaitForChild("ReleaseFromCollection") :: RemoteFunction
 local OpenPC: RemoteEvent = RemotesFolder:WaitForChild("OpenPC") :: RemoteEvent
 
-local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels")
+local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotList")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 
@@ -333,7 +333,7 @@ local function createBattleGui()
 		local party = data.party or {}
 		local leaderIndex = data.leaderIndex or 1
 		for index, mon in ipairs(party) do
-			local slot = Instance.new("TextLabel")
+			local slot = Instance.new("TextButton")
 			slot.Size = UDim2.new(1, 0, 0, 40)
 			if mon.hp <= 0 then
 				slot.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
@@ -344,6 +344,7 @@ local function createBattleGui()
 			slot.Font = Enum.Font.Gotham
 			slot.TextSize = 14
 			slot.TextXAlignment = Enum.TextXAlignment.Left
+			slot.AutoButtonColor = true
 
 			local leaderMark = (index == leaderIndex) and " ★" or ""
 			slot.Text = string.format(
@@ -359,6 +360,13 @@ local function createBattleGui()
 			local c = Instance.new("UICorner")
 			c.CornerRadius = UDim.new(0, 6)
 			c.Parent = slot
+
+			slot.MouseButton1Click:Connect(function()
+				if mon.hp > 0 then
+					BattleRequest:FireServer("switch", index)
+					showMain()
+				end
+			end)
 		end
 	end)
 
@@ -1028,11 +1036,124 @@ local function createMenuGui()
 	settingsLabel.Position = UDim2.new(0, 0, 0, 0)
 	settingsLabel.BackgroundTransparency = 1
 	settingsLabel.TextColor3 = Color3.new(1, 1, 1)
-	settingsLabel.Font = Enum.Font.Gotham
-	settingsLabel.TextSize = 16
+	settingsLabel.Font = Enum.Font.GothamBold
+	settingsLabel.TextSize = 18
 	settingsLabel.TextXAlignment = Enum.TextXAlignment.Left
-	settingsLabel.Text = "Settings coming soon."
+	settingsLabel.Text = "Settings"
 	settingsLabel.Parent = settingsFrame
+
+	local SoundService = game:GetService("SoundService")
+	local musicGroup = SoundService:FindFirstChild("MenuMusic") or Instance.new("SoundGroup")
+	musicGroup.Name = "MenuMusic"
+	musicGroup.Volume = 1
+	musicGroup.Parent = SoundService
+
+	local sfxGroup = SoundService:FindFirstChild("MenuSFX") or Instance.new("SoundGroup")
+	sfxGroup.Name = "MenuSFX"
+	sfxGroup.Volume = 1
+	sfxGroup.Parent = SoundService
+
+	local function createSettingsToggle(parent: Frame, name: string, label: string, yOffset: number, getValue: () -> boolean, setValue: (v: boolean) -> ())
+		local row = Instance.new("Frame")
+		row.Name = name
+		row.Size = UDim2.new(1, 0, 0, 32)
+		row.Position = UDim2.new(0, 0, 0, yOffset)
+		row.BackgroundTransparency = 1
+		row.Parent = parent
+
+		local lbl = Instance.new("TextLabel")
+		lbl.Size = UDim2.new(0.6, 0, 1, 0)
+		lbl.Position = UDim2.new(0, 0, 0, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.TextColor3 = Color3.new(1, 1, 1)
+		lbl.Font = Enum.Font.Gotham
+		lbl.TextSize = 16
+		lbl.TextXAlignment = Enum.TextXAlignment.Left
+		lbl.Text = label
+		lbl.Parent = row
+
+		local btn = Instance.new("TextButton")
+		btn.Size = UDim2.new(0, 80, 0, 24)
+		btn.Position = UDim2.new(0.65, 0, 0.5, -12)
+		btn.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 14
+		btn.Parent = row
+
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 6)
+		corner.Parent = btn
+
+		local function update()
+			local v = getValue()
+			btn.Text = v and "On" or "Off"
+		end
+		update()
+
+		btn.MouseButton1Click:Connect(function()
+			setValue(not getValue())
+			update()
+		end)
+		return row
+	end
+
+	createSettingsToggle(settingsFrame, "MusicToggle", "Music", 32, function()
+		return musicGroup.Volume > 0.5
+	end, function(v)
+		musicGroup.Volume = v and 1 or 0
+	end)
+
+	createSettingsToggle(settingsFrame, "SFXToggle", "Sound Effects", 68, function()
+		return sfxGroup.Volume > 0.5
+	end, function(v)
+		sfxGroup.Volume = v and 1 or 0
+	end)
+
+	local cameraRow = Instance.new("Frame")
+	cameraRow.Name = "CameraSensitivity"
+	cameraRow.Size = UDim2.new(1, 0, 0, 40)
+	cameraRow.Position = UDim2.new(0, 0, 0, 108)
+	cameraRow.BackgroundTransparency = 1
+	cameraRow.Parent = settingsFrame
+
+	local cameraLabel = Instance.new("TextLabel")
+	cameraLabel.Size = UDim2.new(1, 0, 0, 20)
+	cameraLabel.Position = UDim2.new(0, 0, 0, 0)
+	cameraLabel.BackgroundTransparency = 1
+	cameraLabel.TextColor3 = Color3.new(1, 1, 1)
+	cameraLabel.Font = Enum.Font.Gotham
+	cameraLabel.TextSize = 16
+	cameraLabel.TextXAlignment = Enum.TextXAlignment.Left
+	cameraLabel.Text = "Camera Sensitivity"
+	cameraLabel.Parent = cameraRow
+
+	local cameraSlider = Instance.new("TextButton")
+	cameraSlider.Size = UDim2.new(1, 0, 0, 20)
+	cameraSlider.Position = UDim2.new(0, 0, 0, 22)
+	cameraSlider.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+	cameraSlider.TextColor3 = Color3.new(1, 1, 1)
+	cameraSlider.Font = Enum.Font.Gotham
+	cameraSlider.TextSize = 14
+	cameraSlider.Text = "1.0"
+	cameraSlider.Parent = cameraRow
+
+	local cameraCorner = Instance.new("UICorner")
+	cameraCorner.CornerRadius = UDim.new(0, 6)
+	cameraCorner.Parent = cameraSlider
+
+	local cameraSensitivity = 1.0
+	cameraSlider.MouseButton1Click:Connect(function()
+		cameraSensitivity = cameraSensitivity + 0.25
+		if cameraSensitivity > 2 then
+			cameraSensitivity = 0.5
+		end
+		cameraSlider.Text = string.format("%.1f", cameraSensitivity)
+		local cam = workspace.CurrentCamera
+		if cam then
+			cam.CameraSubject = cam.CameraSubject
+		end
+	end)
 
 	local brainrotsFrame = Instance.new("Frame")
 	brainrotsFrame.Name = "BrainrotsFrame"
@@ -1041,9 +1162,59 @@ local function createMenuGui()
 	brainrotsFrame.Visible = false
 	brainrotsFrame.Parent = contentBody
 
+	local brainrotsFilterFrame = Instance.new("Frame")
+	brainrotsFilterFrame.Name = "BrainrotsFilter"
+	brainrotsFilterFrame.Size = UDim2.new(0.45, 0, 0, 40)
+	brainrotsFilterFrame.Position = UDim2.new(0, 0, 0, 0)
+	brainrotsFilterFrame.BackgroundTransparency = 1
+	brainrotsFilterFrame.Parent = brainrotsFrame
+
+	local brainrotsFilterLayout = Instance.new("UIListLayout")
+	brainrotsFilterLayout.FillDirection = Enum.FillDirection.Horizontal
+	brainrotsFilterLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	brainrotsFilterLayout.Padding = UDim.new(0, 6)
+	brainrotsFilterLayout.Parent = brainrotsFilterFrame
+
+	local brainrotsFilterMode = "all"
+	local brainrotsSortMode = "level"
+
+	local function createFilterButton(name: string, label: string)
+		local btn = Instance.new("TextButton")
+		btn.Name = name
+		btn.Size = UDim2.new(0, 70, 0, 28)
+		btn.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.Font = Enum.Font.GothamBold
+		btn.TextSize = 12
+		btn.Text = label
+		btn.Parent = brainrotsFilterFrame
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 6)
+		c.Parent = btn
+		return btn
+	end
+
+	local filterAllBtn = createFilterButton("FilterAll", "All")
+	local filterAliveBtn = createFilterButton("FilterAlive", "Alive")
+	local filterFaintedBtn = createFilterButton("FilterFainted", "Fainted")
+
+	local sortDropdown = Instance.new("TextButton")
+	sortDropdown.Name = "SortDropdown"
+	sortDropdown.Size = UDim2.new(0, 100, 0, 28)
+	sortDropdown.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+	sortDropdown.TextColor3 = Color3.new(1, 1, 1)
+	sortDropdown.Font = Enum.Font.Gotham
+	sortDropdown.TextSize = 12
+	sortDropdown.Text = "Sort: Level"
+	sortDropdown.Parent = brainrotsFilterFrame
+	local sortCorner = Instance.new("UICorner")
+	sortCorner.CornerRadius = UDim.new(0, 6)
+	sortCorner.Parent = sortDropdown
+
 	local partyList = Instance.new("Frame")
 	partyList.Name = "PartyList"
-	partyList.Size = UDim2.new(0.45, 0, 1, 0)
+	partyList.Size = UDim2.new(0.45, 0, 1, -44)
+	partyList.Position = UDim2.new(0, 0, 0, 44)
 	partyList.BackgroundTransparency = 1
 	partyList.Parent = brainrotsFrame
 
@@ -1554,7 +1725,32 @@ local function createMenuGui()
 
 			local party = data.party or {}
 			local leaderIndex = data.leaderIndex or 1
+
+			local filtered = {}
 			for index, mon in ipairs(party) do
+				if brainrotsFilterMode == "all" then
+					table.insert(filtered, { mon = mon, index = index })
+				elseif brainrotsFilterMode == "alive" and mon.hp > 0 then
+					table.insert(filtered, { mon = mon, index = index })
+				elseif brainrotsFilterMode == "fainted" and mon.hp <= 0 then
+					table.insert(filtered, { mon = mon, index = index })
+				end
+			end
+
+			table.sort(filtered, function(a, b)
+				if brainrotsSortMode == "level" then
+					return (a.mon.level or 1) > (b.mon.level or 1)
+				elseif brainrotsSortMode == "name" then
+					return (a.mon.displayName or "") < (b.mon.displayName or "")
+				elseif brainrotsSortMode == "hp" then
+					return (a.mon.hp or 0) > (b.mon.hp or 0)
+				end
+				return false
+			end)
+
+			for _, entry in ipairs(filtered) do
+				local mon = entry.mon
+				local index = entry.index
 				local slot = Instance.new("TextButton")
 				slot.Size = UDim2.new(1, 0, 0, 60)
 				if mon.hp <= 0 then
@@ -1637,13 +1833,14 @@ local function createMenuGui()
 				end)
 			end
 
-			if #party > 0 then
-				local first = party[1]
+			if #filtered > 0 then
+				local first = filtered[1].mon
+				local firstIndex = filtered[1].index
 				local movesText = ""
 				for _, move in ipairs(first.moves or {}) do
 					movesText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
 				end
-				currentSelectedPartyIndex = 1
+				currentSelectedPartyIndex = firstIndex
 				local heldText = first.heldItemId and ("Held: " .. tostring(first.heldItemId)) or "Held: (none)"
 				heldItemLabel.Text = heldText
 				brainrotDetail.Text = string.format(
@@ -1813,6 +2010,32 @@ local function createMenuGui()
 
 	brainrotsButton.MouseButton1Click:Connect(function()
 		openSection("brainrots")
+	end)
+
+	filterAllBtn.MouseButton1Click:Connect(function()
+		brainrotsFilterMode = "all"
+		refreshTrainerData()
+	end)
+	filterAliveBtn.MouseButton1Click:Connect(function()
+		brainrotsFilterMode = "alive"
+		refreshTrainerData()
+	end)
+	filterFaintedBtn.MouseButton1Click:Connect(function()
+		brainrotsFilterMode = "fainted"
+		refreshTrainerData()
+	end)
+	sortDropdown.MouseButton1Click:Connect(function()
+		if brainrotsSortMode == "level" then
+			brainrotsSortMode = "name"
+			sortDropdown.Text = "Sort: Name"
+		elseif brainrotsSortMode == "name" then
+			brainrotsSortMode = "hp"
+			sortDropdown.Text = "Sort: HP"
+		else
+			brainrotsSortMode = "level"
+			sortDropdown.Text = "Sort: Level"
+		end
+		refreshTrainerData()
 	end)
 
 	pcButton.MouseButton1Click:Connect(function()
