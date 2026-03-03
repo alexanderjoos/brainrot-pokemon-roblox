@@ -767,6 +767,34 @@ local function setupBrainrotCenter()
 		healTrainerBrainrots(player)
 		HealComplete:FireClient(player)
 	end)
+
+	local pcModel = center:FindFirstChild("PC")
+	if pcModel then
+		local pcPart: BasePart? = nil
+		if pcModel:IsA("BasePart") then
+			pcPart = pcModel :: BasePart
+		elseif pcModel:IsA("Model") then
+			pcPart = (pcModel :: Model):FindFirstChildWhichIsA("BasePart")
+		end
+
+		if pcPart then
+			local pcPrompt = pcPart:FindFirstChildOfClass("ProximityPrompt")
+			if not pcPrompt then
+				pcPrompt = Instance.new("ProximityPrompt")
+				pcPrompt.ObjectText = "PC"
+				pcPrompt.ActionText = "Open PC"
+				pcPrompt.RequiresLineOfSight = false
+				pcPrompt.MaxActivationDistance = 10
+				pcPrompt.Parent = pcPart
+			end
+
+			pcPrompt.Triggered:Connect(function(player: Player)
+				if playerData[player] then
+					OpenPC:FireClient(player)
+				end
+			end)
+		end
+	end
 end
 
 SetHeldItem.OnServerEvent:Connect(function(player: Player, partyIndex: number, itemId: string?)
