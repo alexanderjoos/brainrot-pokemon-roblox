@@ -331,6 +331,11 @@ function module.calculateDamage(attacker, defender, move)
 	local defendType = def and def.type or "Neutral"
 	damage = math.floor(damage * module.getTypeEffectiveness(attackType, defendType))
 
+	-- Held item: sigma_shield reduces incoming damage by 20%
+	if (defender :: any).heldItemId == "sigma_shield" then
+		damage = math.floor(damage * 0.8)
+	end
+
 	return math.max(damage, 1)
 end
 

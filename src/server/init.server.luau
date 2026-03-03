@@ -210,6 +210,8 @@ local function calculateExpGain(playerMon: BrainrotInstance, enemyMon: BrainrotI
 	end
 	if (playerMon :: any).heldItemId == "brainrot_treat" then
 		baseExp = math.floor(baseExp * 1.5)
+	elseif (playerMon :: any).heldItemId == "lucky_egg" then
+		baseExp = math.floor(baseExp * 2)
 	end
 	return baseExp
 end
@@ -552,7 +554,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			return
 		end
 
-		local ballId = (type(moveId) == "string" and (moveId == "troppi_ball" or moveId == "super_ball" or moveId == "ultra_ball")) and moveId or "troppi_ball"
+		local ballId = (type(moveId) == "string" and (moveId == "troppi_ball" or moveId == "super_ball" or moveId == "ultra_ball" or moveId == "master_ball")) and moveId or "troppi_ball"
 		local ballEntry = getBagItem(data, ballId)
 		if not ballEntry or ballEntry.quantity <= 0 then
 			ballEntry = getBagItem(data, "troppi_ball")
@@ -682,18 +684,20 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			else
 				sendBattleUpdate(player, battle, "You used an Energy Drink, but nothing happened.")
 			end
-		elseif itemId == "henny" then
+		elseif itemId == "henny" or itemId == "max_revive" then
 			if playerMon.hp > 0 then
-				sendBattleUpdate(player, battle, "You used Henny, but your brainrot is already conscious.")
+				sendBattleUpdate(player, battle, "You used " .. itemDef.displayName .. ", but your brainrot is already conscious.")
 			else
-				playerMon.hp = math.max(1, math.floor(playerMon.maxHP / 2))
+				local reviveRatio = (itemDef.effect and itemDef.effect.revive) or 0.5
+				playerMon.hp = math.max(1, math.floor(playerMon.maxHP * reviveRatio))
 				clearStatus(playerMon)
+				local hpPct = math.floor(reviveRatio * 100)
 				sendBattleUpdate(
 					player,
 					battle,
-					"You poured Henny on "
+					"You used " .. itemDef.displayName .. " on "
 						.. playerMon.displayName
-						.. "! It revived with half HP."
+						.. "! It revived with " .. tostring(hpPct) .. "% HP."
 				)
 			end
 		elseif itemId == "potion" or itemId == "super_potion" or itemId == "hyper_potion" or itemId == "full_restore" then
@@ -710,17 +714,27 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				end
 				sendBattleUpdate(player, battle, "You used " .. itemDef.displayName .. "! " .. playerMon.displayName .. " recovered " .. tostring(healed) .. " HP!")
 			end
-		elseif itemId == "attack_boost" or itemId == "defense_boost" then
+		elseif itemId == "attack_boost" or itemId == "defense_boost" or itemId == "speed_boost" then
 			local effect = itemDef.effect
 			local stat = effect and effect.statBoost or "attack"
 			if stat == "attack" then
 				(playerMon :: any).attackBoostTurns = ((playerMon :: any).attackBoostTurns or 0) + (effect and effect.turns or 3)
 				playerMon.attack = playerMon.attack + 2
+			elseif stat == "speed" then
+				(playerMon :: any).speedBoostTurns = ((playerMon :: any).speedBoostTurns or 0) + (effect and effect.turns or 3)
+				playerMon.speed = playerMon.speed + 2
 			else
 				(playerMon :: any).defenseBoostTurns = ((playerMon :: any).defenseBoostTurns or 0) + (effect and effect.turns or 3)
 				playerMon.defense = playerMon.defense + 2
 			end
 			sendBattleUpdate(player, battle, "You used " .. itemDef.displayName .. "! " .. playerMon.displayName .. "'s " .. stat .. " rose!")
+		elseif itemId == "antidote" then
+			if not (playerMon :: any).statusEffect then
+				sendBattleUpdate(player, battle, playerMon.displayName .. " doesn't have a status condition!")
+			else
+				clearStatus(playerMon)
+				sendBattleUpdate(player, battle, "You used an Antidote! " .. playerMon.displayName .. " was cured!")
+			end
 		end
 
 		enemyRespond(player, battle, playerMon, enemyMon)
@@ -1219,14 +1233,62 @@ UseItemOutsideBattle.OnServerInvoke = function(player: Player, itemId: string, p
 	local effect = itemDef.effect
 	local hasHeal = effect and effect.heal
 	local hasRevive = effect and effect.revive
-	if not hasHeal and not hasRevive then
+	local hasClearStatus = effect and effect.clearStatus and not hasHeal
+	local hasSpeedBoost = effect and effect.speedBoost
+
+	if not hasHeal and not hasRevive and not hasClearStatus and not hasSpeedBoost then
 		return false, "That item can't be used outside of battle."
+	end
+
+	if hasSpeedBoost then
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then
+			return false, "Couldn't apply speed boost."
+		end
+		local originalSpeed = humanoid.WalkSpeed
+		humanoid.WalkSpeed = originalSpeed * (effect.speedBoost or 1.5)
+		local duration = effect.duration or 60
+		task.delay(duration, function()
+			if humanoid then
+				humanoid.WalkSpeed = originalSpeed
+			end
+		end)
+
+		entry.quantity -= 1
+		if entry.quantity <= 0 then
+			for i, e in ipairs(data.bag) do
+				if e == entry then
+					table.remove(data.bag, i)
+					break
+				end
+			end
+		end
+		return true, "You used " .. itemDef.displayName .. "! Speed boosted for " .. tostring(duration) .. "s!"
 	end
 
 	partyIndex = partyIndex or 1
 	local mon = data.party[partyIndex]
 	if not mon then
 		return false, "Invalid party slot."
+	end
+
+	if hasClearStatus then
+		if not (mon :: any).statusEffect then
+			return false, mon.displayName .. " doesn't have a status condition."
+		end
+		clearStatus(mon :: BrainrotInstance)
+
+		entry.quantity -= 1
+		if entry.quantity <= 0 then
+			for i, e in ipairs(data.bag) do
+				if e == entry then
+					table.remove(data.bag, i)
+					break
+				end
+			end
+		end
+		return true, "You used " .. itemDef.displayName .. "! " .. mon.displayName .. " was cured!"
 	end
 
 	if hasRevive then
@@ -1534,7 +1596,8 @@ end)
 
 task.spawn(function()
 	while true do
-		task.wait(15)
+		task.wait(5)
+		spawnRandomItem()
 		spawnRandomItem()
 	end
 end)

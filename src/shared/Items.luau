@@ -20,9 +20,10 @@ local Items = {
 	["energy_drink"] = {
 		id = "energy_drink",
 		displayName = "Energy Drink",
-		description = "Illegally caffeinated. A quick pick-me-up for tired brainrots.",
-		ability = "Restores a small amount of HP. Usable in battle.",
+		description = "Illegally caffeinated. Drink it and zoom across the map.",
+		ability = "Boosts your trainer's movement speed by 50% for 60 seconds.",
 		usableInBattle = true,
+		effect = { speedBoost = 1.5, duration = 60 },
 	},
 
 	["troppi_ball"] = {
@@ -113,6 +114,60 @@ local Items = {
 		ability = "Raises Defense for 3 turns.",
 		usableInBattle = true,
 		effect = { statBoost = "defense", turns = 3 },
+	},
+
+	["speed_boost"] = {
+		id = "speed_boost",
+		displayName = "Speed Boost",
+		description = "A fizzy supplement that makes your brainrot lightning-fast.",
+		ability = "Raises Speed for 3 turns.",
+		usableInBattle = true,
+		effect = { statBoost = "speed", turns = 3 },
+	},
+
+	["antidote"] = {
+		id = "antidote",
+		displayName = "Antidote",
+		description = "A cleansing tonic that purges toxins and ailments.",
+		ability = "Cures all status effects (poison, burn, paralyze, sleep).",
+		usableInBattle = true,
+		effect = { clearStatus = true },
+	},
+
+	["master_ball"] = {
+		id = "master_ball",
+		displayName = "Master Ball",
+		description = "The ultimate capture ball. Virtually guaranteed to catch anything.",
+		ability = "5x capture rate. Almost never fails.",
+		usableInBattle = true,
+		effect = { captureRate = 5 },
+	},
+
+	["max_revive"] = {
+		id = "max_revive",
+		displayName = "Max Revive",
+		description = "The premium revival item. Brings back the fallen at full strength.",
+		ability = "Revives a fainted brainrot with 100% of max HP.",
+		usableInBattle = true,
+		effect = { revive = 1.0 },
+	},
+
+	["sigma_shield"] = {
+		id = "sigma_shield",
+		displayName = "Sigma Shield",
+		description = "An aura of pure sigma energy. Deflects incoming damage when held.",
+		ability = "When held: reduces damage taken by 20%.",
+		holdable = true,
+		usableInBattle = false,
+	},
+
+	["lucky_egg"] = {
+		id = "lucky_egg",
+		displayName = "Lucky Egg",
+		description = "A mysterious glowing egg. Holding it attracts fortune.",
+		ability = "When held: doubles EXP gained from battles.",
+		holdable = true,
+		usableInBattle = false,
 	},
 }
 
