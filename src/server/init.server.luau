@@ -1,6 +1,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+
+local TrainerDataStore = DataStoreService:GetDataStore("TrainerData_v1")
 
 local SharedFolder = ReplicatedStorage:WaitForChild("Shared")
 local Brainrots = require(SharedFolder:WaitForChild("Brainrots"))
@@ -44,6 +48,33 @@ if not OpenPCRemote then
 end
 local OpenPC = OpenPCRemote :: RemoteEvent
 
+local BattleInviteRemote = RemotesFolder:FindFirstChild("BattleInvite") :: RemoteEvent?
+if not BattleInviteRemote then
+	local newEvent = Instance.new("RemoteEvent")
+	newEvent.Name = "BattleInvite"
+	newEvent.Parent = RemotesFolder
+	BattleInviteRemote = newEvent
+end
+local BattleInvite = BattleInviteRemote :: RemoteEvent
+
+local BattleInviteResponseRemote = RemotesFolder:FindFirstChild("BattleInviteResponse") :: RemoteEvent?
+if not BattleInviteResponseRemote then
+	local newEvent = Instance.new("RemoteEvent")
+	newEvent.Name = "BattleInviteResponse"
+	newEvent.Parent = RemotesFolder
+	BattleInviteResponseRemote = newEvent
+end
+local BattleInviteResponse = BattleInviteResponseRemote :: RemoteEvent
+
+local SetSettingsRemote = RemotesFolder:FindFirstChild("SetSettings") :: RemoteEvent?
+if not SetSettingsRemote then
+	local newEvent = Instance.new("RemoteEvent")
+	newEvent.Name = "SetSettings"
+	newEvent.Parent = RemotesFolder
+	SetSettingsRemote = newEvent
+end
+local SetSettings = SetSettingsRemote :: RemoteEvent
+
 type BrainrotInstance = {
 	id: string,
 	displayName: string,
@@ -56,6 +87,8 @@ type BrainrotInstance = {
 	defense: number,
 	speed: number,
 	moves: { any },
+	statusEffect: string?,
+	statusTurns: number?,
 }
 
 type BattleState = {
@@ -87,6 +120,7 @@ type TrainerData = {
 	stats: TrainerStats,
 	dexSeen: { [string]: boolean },
 	dexCaught: { [string]: boolean },
+	settings: { musicEnabled: boolean?, sfxEnabled: boolean?, cameraSensitivity: number? }?,
 }
 
 local playerData: { [Player]: TrainerData } = {}
@@ -160,6 +194,76 @@ local function getBrainrotCenterSpawnCFrame(): CFrame?
 	return spawn.CFrame + Vector3.new(0, 3, 0)
 end
 
+local STATUS_POISON = "poison"
+local STATUS_BURN = "burn"
+local STATUS_PARALYZE = "paralyze"
+local STATUS_SLEEP = "sleep"
+
+local function clearStatus(mon: BrainrotInstance)
+	(mon :: any).statusEffect = nil
+	(mon :: any).statusTurns = nil
+end
+
+local function tryApplyStatus(defender: BrainrotInstance, move: any)
+	if not move or not defender or defender.hp <= 0 then
+		return
+	end
+	local statusEffect = (move :: any).statusEffect
+	local statusChance = (move :: any).statusChance or 1
+	if not statusEffect or (defender :: any).statusEffect then
+		return
+	end
+	if math.random() > statusChance then
+		return
+	end
+	(defender :: any).statusEffect = statusEffect
+	if statusEffect == STATUS_SLEEP then
+		(defender :: any).statusTurns = math.random(2, 4)
+	end
+end
+
+local function processEndOfTurnStatus(player: Player, battle: BattleState): string?
+	local playerMon = battle.playerBrainrot
+	local enemyMon = battle.enemyBrainrot
+	local msg = ""
+
+	for _, mon in ipairs({ playerMon, enemyMon }) do
+		if mon.hp > 0 then
+			local status = (mon :: any).statusEffect
+			if status == STATUS_POISON or status == STATUS_BURN then
+				local damage = math.max(1, math.floor(mon.maxHP / 8))
+				mon.hp = math.max(mon.hp - damage, 0)
+				local name = mon == playerMon and ("Your " .. mon.displayName) or mon.displayName
+				msg = msg .. name .. " took " .. tostring(damage) .. " damage from " .. status .. "! "
+			end
+		end
+	end
+
+	if msg ~= "" then
+		return msg
+	end
+	return nil
+end
+
+local function checkStatusSkipTurn(mon: BrainrotInstance): (boolean, string?)
+	local status = (mon :: any).statusEffect
+	if status == STATUS_PARALYZE then
+		if math.random() < 0.25 then
+			return true, "It's paralyzed! It couldn't move!"
+		end
+	elseif status == STATUS_SLEEP then
+		local turns = (mon :: any).statusTurns or 0
+		if turns > 0 then
+			(mon :: any).statusTurns = turns - 1
+			return true, "It's fast asleep!"
+		else
+			clearStatus(mon)
+			return false, nil
+		end
+	end
+	return false, nil
+end
+
 local function chooseEnemyMove(enemy: BrainrotInstance)
 	local moves = enemy.moves
 	if #moves == 0 then
@@ -181,6 +285,18 @@ local function performAttack(attacker: BrainrotInstance, defender: BrainrotInsta
 
 	local damage = Brainrots.calculateDamage(attacker, defender, move)
 	defender.hp = math.max(defender.hp - damage, 0)
+	return damage, true
+end
+
+local function computeAttackResult(attacker: BrainrotInstance, defender: BrainrotInstance, move)
+	if not move then
+		return 0, false
+	end
+	local hitChance = move.accuracy or 1
+	if math.random() > hitChance then
+		return 0, false
+	end
+	local damage = Brainrots.calculateDamage(attacker, defender, move)
 	return damage, true
 end
 
@@ -318,6 +434,12 @@ local function endBattleForPlayer(player: Player, finalState: string?)
 
 	sendBattleAnimation(player, "end", nil)
 	activeBattles[player] = nil
+	local data = playerData[player]
+	if data and data.party then
+		for _, mon in ipairs(data.party) do
+			clearStatus(mon :: BrainrotInstance)
+		end
+	end
 end
 
 local function handleBattleRequest(player: Player, action: string, moveId: string?)
@@ -334,8 +456,47 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			sendBattleUpdate(player, battle, "You can't run from a trainer battle!")
 			return
 		end
-		endBattleForPlayer(player, "finished")
-		sendBattleUpdate(player, battle, "You ran away!")
+		local playerSpeed = playerMon.speed or 5
+		local enemySpeed = enemyMon.speed or 5
+		local runChance = 0.6 + (playerSpeed - enemySpeed) * 0.05
+		runChance = math.clamp(runChance, 0.3, 0.95)
+		if math.random() < runChance then
+			endBattleForPlayer(player, "finished")
+			sendBattleUpdate(player, battle, "You ran away!")
+		else
+			sendBattleUpdate(player, battle, "Couldn't escape! " .. enemyMon.displayName .. " blocks your path!")
+			enemyRespond(player, battle, playerMon, enemyMon)
+		end
+		return
+	end
+
+	if action == "switch" and moveId then
+		local data = playerData[player]
+		if not data then
+			return
+		end
+
+		local party = data.party or {}
+		local index = tonumber(moveId)
+		if not index or index < 1 or index > #party then
+			return
+		end
+
+		local newMon = party[index]
+		if newMon.hp <= 0 then
+			sendBattleUpdate(player, battle, "You can't switch to a fainted brainrot!")
+			return
+		end
+
+		if newMon == playerMon then
+			sendBattleUpdate(player, battle, newMon.displayName .. " is already in battle!")
+			return
+		end
+
+		battle.playerBrainrot = newMon
+		data.activeIndex = index
+		sendBattleUpdate(player, battle, "You switched to " .. newMon.displayName .. "!")
+		enemyRespond(player, battle, newMon, enemyMon)
 		return
 	end
 
@@ -345,9 +506,14 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			return
 		end
 
-		local ballEntry = getBagItem(data, "troppi_ball")
+		local ballId = (type(moveId) == "string" and (moveId == "troppi_ball" or moveId == "super_ball" or moveId == "ultra_ball")) and moveId or "troppi_ball"
+		local ballEntry = getBagItem(data, ballId)
 		if not ballEntry or ballEntry.quantity <= 0 then
-			sendBattleUpdate(player, battle, "You don't have any Troppi-balls!")
+			ballEntry = getBagItem(data, "troppi_ball")
+			ballId = "troppi_ball"
+		end
+		if not ballEntry or ballEntry.quantity <= 0 then
+			sendBattleUpdate(player, battle, "You don't have any capture balls!")
 			return
 		end
 
@@ -364,6 +530,14 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 		sendBattleAnimation(player, "captureAttempt", nil)
 		local hpRatio = enemyMon.hp / math.max(enemyMon.maxHP, 1)
 		local captureChance = math.clamp(0.7 - hpRatio * 0.5, 0.2, 0.9)
+		local ballDef = Items.getById(ballId)
+		if ballDef and ballDef.effect and ballDef.effect.captureRate then
+			captureChance = captureChance * ballDef.effect.captureRate
+		end
+		if (playerMon :: any).heldItemId == "capture_chip" then
+			captureChance = math.min(0.95, captureChance + 0.15)
+		end
+		captureChance = math.clamp(captureChance, 0.05, 0.95)
 
 		if math.random() < captureChance then
 			local data = playerData[player]
@@ -463,6 +637,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				sendBattleUpdate(player, battle, "You used Henny, but your brainrot is already conscious.")
 			else
 				playerMon.hp = math.max(1, math.floor(playerMon.maxHP / 2))
+				clearStatus(playerMon)
 				sendBattleUpdate(
 					player,
 					battle,
@@ -471,6 +646,31 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 						.. "! It revived with half HP."
 				)
 			end
+		elseif itemId == "potion" or itemId == "super_potion" or itemId == "hyper_potion" or itemId == "full_restore" then
+			local effect = itemDef.effect
+			local healAmount = effect and effect.heal or 20
+			if playerMon.hp <= 0 then
+				sendBattleUpdate(player, battle, "You can't use that on a fainted brainrot!")
+			else
+				local oldHp = playerMon.hp
+				playerMon.hp = math.min(playerMon.hp + healAmount, playerMon.maxHP)
+				local healed = playerMon.hp - oldHp
+				if effect and effect.clearStatus then
+					clearStatus(playerMon)
+				end
+				sendBattleUpdate(player, battle, "You used " .. itemDef.displayName .. "! " .. playerMon.displayName .. " recovered " .. tostring(healed) .. " HP!")
+			end
+		elseif itemId == "attack_boost" or itemId == "defense_boost" then
+			local effect = itemDef.effect
+			local stat = effect and effect.statBoost or "attack"
+			if stat == "attack" then
+				(playerMon :: any).attackBoostTurns = ((playerMon :: any).attackBoostTurns or 0) + (effect and effect.turns or 3)
+				playerMon.attack = playerMon.attack + 2
+			else
+				(playerMon :: any).defenseBoostTurns = ((playerMon :: any).defenseBoostTurns or 0) + (effect and effect.turns or 3)
+				playerMon.defense = playerMon.defense + 2
+			end
+			sendBattleUpdate(player, battle, "You used " .. itemDef.displayName .. "! " .. playerMon.displayName .. "'s " .. stat .. " rose!")
 		end
 
 		enemyRespond(player, battle, playerMon, enemyMon)
@@ -491,79 +691,149 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			return
 		end
 
-		local damage, hit = performAttack(playerMon, enemyMon, chosenMove)
+		local playerSkip, playerSkipMsg = checkStatusSkipTurn(playerMon)
+		local enemyMove = chooseEnemyMove(enemyMon)
+		local enemySkip, enemySkipMsg = checkStatusSkipTurn(enemyMon)
 
+		local playerDamage, playerHit = 0, false
+		if not playerSkip then
+			playerDamage, playerHit = computeAttackResult(playerMon, enemyMon, chosenMove)
+		end
+		local enemyDamage, enemyHit = 0, false
+		if not enemySkip then
+			enemyDamage, enemyHit = computeAttackResult(enemyMon, playerMon, enemyMove)
+		end
+
+		local playerSpeed = playerMon.speed or 5
+		local enemySpeed = enemyMon.speed or 5
+		local playerFirst = playerSpeed >= enemySpeed
+
+		local function applyDamage(target, amount)
+			target.hp = math.max(target.hp - amount, 0)
+		end
+
+		local msg = ""
+		if playerFirst then
+			if playerSkip then
+				msg = msg .. (playerSkipMsg or "Your brainrot couldn't move! ") .. " "
+			elseif playerHit then
+				applyDamage(enemyMon, playerDamage)
+				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage! "
+				tryApplyStatus(enemyMon, chosenMove)
+			else
+				msg = msg .. "Your attack missed! "
+			end
+			if enemyMon.hp <= 0 then
+				battle.state = "won"
+				local data = playerData[player]
+				if data then
+					data.stats.battlesWon += 1
+					markDexCaught(data, enemyMon.id)
+					local expGain = math.max(5, enemyMon.level * 10)
+					if (playerMon :: any).heldItemId == "brainrot_treat" then
+						expGain = math.floor(expGain * 1.5)
+					end
+					Brainrots.gainExperience(playerMon, expGain)
+				end
+				sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted!")
+				endBattleForPlayer(player, "won")
+				return
+			end
+			if enemySkip then
+				msg = msg .. (enemySkipMsg or (enemyMon.displayName .. " couldn't move! ")) .. " "
+			elseif enemyHit then
+				applyDamage(playerMon, enemyDamage)
+				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage! "
+				tryApplyStatus(playerMon, enemyMove)
+			else
+				msg = msg .. enemyMon.displayName .. "'s attack missed!"
+			end
+			if playerMon.hp <= 0 then
+				battle.state = "lost"
+				local data = playerData[player]
+				if data then
+					data.stats.battlesLost += 1
+				end
+				sendBattleUpdate(player, battle, msg .. " Your brainrot fainted!")
+				endBattleForPlayer(player, "lost")
+				return
+			end
+		else
+			if enemySkip then
+				msg = msg .. (enemySkipMsg or (enemyMon.displayName .. " couldn't move! ")) .. " "
+			elseif enemyHit then
+				applyDamage(playerMon, enemyDamage)
+				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage! "
+				tryApplyStatus(playerMon, enemyMove)
+			else
+				msg = msg .. enemyMon.displayName .. "'s attack missed! "
+			end
+			if playerMon.hp <= 0 then
+				battle.state = "lost"
+				local data = playerData[player]
+				if data then
+					data.stats.battlesLost += 1
+				end
+				sendBattleUpdate(player, battle, msg .. " Your brainrot fainted!")
+				endBattleForPlayer(player, "lost")
+				return
+			end
+			if playerSkip then
+				msg = msg .. (playerSkipMsg or "Your brainrot couldn't move! ") .. " "
+			elseif playerHit then
+				applyDamage(enemyMon, playerDamage)
+				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage! "
+				tryApplyStatus(enemyMon, chosenMove)
+			else
+				msg = msg .. "Your attack missed! "
+			end
+			if enemyMon.hp <= 0 then
+				battle.state = "won"
+				local data = playerData[player]
+				if data then
+					data.stats.battlesWon += 1
+					markDexCaught(data, enemyMon.id)
+					local expGain = math.max(5, enemyMon.level * 10)
+					if (playerMon :: any).heldItemId == "brainrot_treat" then
+						expGain = math.floor(expGain * 1.5)
+					end
+					Brainrots.gainExperience(playerMon, expGain)
+				end
+				sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
+				endBattleForPlayer(player, "won")
+				return
+			end
+		end
+
+		local statusMsg = processEndOfTurnStatus(player, battle)
+		if statusMsg then
+			msg = msg .. statusMsg
+		end
+		if playerMon.hp <= 0 then
+			battle.state = "lost"
+			local data = playerData[player]
+			if data then
+				data.stats.battlesLost += 1
+			end
+			sendBattleUpdate(player, battle, msg .. " Your brainrot fainted!")
+			endBattleForPlayer(player, "lost")
+			return
+		end
 		if enemyMon.hp <= 0 then
 			battle.state = "won"
 			local data = playerData[player]
 			if data then
 				data.stats.battlesWon += 1
 				markDexCaught(data, enemyMon.id)
-
 				local expGain = math.max(5, enemyMon.level * 10)
+				if (playerMon :: any).heldItemId == "brainrot_treat" then
+					expGain = math.floor(expGain * 1.5)
+				end
 				Brainrots.gainExperience(playerMon, expGain)
 			end
-			sendBattleUpdate(
-				player,
-				battle,
-				"You used "
-					.. chosenMove.name
-					.. " and dealt "
-					.. tostring(damage)
-					.. " damage! The wild "
-					.. enemyMon.displayName
-					.. " fainted!"
-			)
+			sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
 			endBattleForPlayer(player, "won")
 			return
-		end
-
-		local enemyMove = chooseEnemyMove(enemyMon)
-		local enemyDamage, enemyHit = performAttack(enemyMon, playerMon, enemyMove)
-
-		if playerMon.hp <= 0 then
-				battle.state = "lost"
-			local data = playerData[player]
-			if data then
-				data.stats.battlesLost += 1
-			end
-			local msg = "You used "
-				.. chosenMove.name
-				.. " and dealt "
-				.. tostring(damage)
-				.. " damage! "
-				.. enemyMon.displayName
-				.. " used "
-				.. enemyMove.name
-				.. " and dealt "
-				.. tostring(enemyDamage)
-				.. " damage! Your brainrot fainted!"
-			sendBattleUpdate(player, battle, msg)
-			endBattleForPlayer(player, "lost")
-			return
-		end
-
-		local msg = ""
-		if hit then
-			msg = msg
-				.. "You used "
-				.. chosenMove.name
-				.. " and dealt "
-				.. tostring(damage)
-				.. " damage! "
-		else
-			msg = msg .. "Your attack missed! "
-		end
-		if enemyHit then
-			msg = msg
-				.. enemyMon.displayName
-				.. " used "
-				.. enemyMove.name
-				.. " and dealt "
-				.. tostring(enemyDamage)
-				.. " damage!"
-		else
-			msg = msg .. enemyMon.displayName .. "'s attack missed!"
 		end
 
 		sendBattleUpdate(player, battle, msg)
@@ -632,6 +902,7 @@ local function createTrainerSnapshot(player: Player)
 		dexCaught = data.dexCaught,
 		collection = snapshotCollection,
 		leaderIndex = data.activeIndex,
+		settings = data.settings or { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 },
 	}
 end
 
@@ -854,6 +1125,37 @@ ReleaseBrainrot.OnServerEvent:Connect(function(player: Player, partyIndex: numbe
 	end
 end)
 
+BattleInvite.OnServerEvent:Connect(function(player: Player, targetUserId: number)
+	local target = Players:GetPlayerByUserId(targetUserId)
+	if not target or target == player then
+		BattleInviteResponse:FireClient(player, false, "Invalid or offline player.")
+		return
+	end
+	if activeBattles[player] or activeBattles[target] then
+		BattleInviteResponse:FireClient(player, false, "One of you is already in a battle.")
+		return
+	end
+	BattleInviteResponse:FireClient(target, true, player.Name .. " invited you to a battle!")
+	BattleInviteResponse:FireClient(player, true, "Invite sent to " .. target.Name .. ".")
+end)
+
+SetSettings.OnServerEvent:Connect(function(player: Player, musicEnabled: boolean?, sfxEnabled: boolean?, cameraSensitivity: number?)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+	data.settings = data.settings or {}
+	if musicEnabled ~= nil then
+		data.settings.musicEnabled = musicEnabled
+	end
+	if sfxEnabled ~= nil then
+		data.settings.sfxEnabled = sfxEnabled
+	end
+	if cameraSensitivity ~= nil then
+		data.settings.cameraSensitivity = cameraSensitivity
+	end
+end)
+
 MoveBrainrotBetweenPartyAndCollection.OnServerInvoke = function(player: Player, partyIndex: number?, collectionIndex: number?)
 	local data = playerData[player]
 	if not data then
@@ -948,28 +1250,125 @@ ReleaseFromCollection.OnServerInvoke = function(player: Player, collectionIndex:
 	return true
 end
 
-Players.PlayerAdded:Connect(function(player)
-	local starter = Brainrots.createInstance("chimpanzini_bananini", 1)
-	local data = {
-		collection = { starter },
-		party = { starter },
-		activeIndex = 1,
-		bag = {},
-		stats = {
+local SCHEMA_VERSION = 1
+
+local function serializeTrainerData(data: TrainerData): string
+	return HttpService:JSONEncode({
+		schemaVersion = SCHEMA_VERSION,
+		party = data.party,
+		collection = data.collection,
+		activeIndex = data.activeIndex,
+		bag = data.bag,
+		stats = data.stats,
+		dexSeen = data.dexSeen,
+		dexCaught = data.dexCaught,
+		settings = data.settings or {},
+	})
+end
+
+local function migrateTrainerData(decoded: any): TrainerData?
+	local version = decoded.schemaVersion or 0
+	if version < 1 then
+		decoded.stats = decoded.stats or {}
+		decoded.stats.totalReleased = decoded.stats.totalReleased or 0
+	end
+	return {
+		party = decoded.party or {},
+		collection = decoded.collection or {},
+		activeIndex = decoded.activeIndex or 1,
+		bag = decoded.bag or {},
+		stats = decoded.stats or {
 			totalCaught = 0,
 			battlesWon = 0,
 			battlesLost = 0,
 			totalReleased = 0,
 		},
-		dexSeen = {},
-		dexCaught = {},
+		dexSeen = decoded.dexSeen or {},
+		dexCaught = decoded.dexCaught or {},
+		settings = decoded.settings and type(decoded.settings) == "table" and {
+			musicEnabled = decoded.settings.musicEnabled ~= false,
+			sfxEnabled = decoded.settings.sfxEnabled ~= false,
+			cameraSensitivity = decoded.settings.cameraSensitivity or 1,
+		} or { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 },
 	}
+end
+
+local function deserializeTrainerData(json: string): TrainerData?
+	local ok, decoded = pcall(function()
+		return HttpService:JSONDecode(json)
+	end)
+	if not ok or not decoded then
+		return nil
+	end
+	return migrateTrainerData(decoded)
+end
+
+local function savePlayerData(player: Player)
+	local data = playerData[player]
+	if not data then
+		return
+	end
+	local key = "Player_" .. player.UserId
+	local ok, err = pcall(function()
+		TrainerDataStore:SetAsync(key, serializeTrainerData(data))
+	end)
+	if not ok then
+		warn("[TrainerData] Failed to save for", player.Name, err)
+	end
+end
+
+local function loadPlayerData(player: Player): TrainerData?
+	local key = "Player_" .. player.UserId
+	local ok, result = pcall(function()
+		return TrainerDataStore:GetAsync(key)
+	end)
+	if not ok or not result then
+		return nil
+	end
+	return deserializeTrainerData(result)
+end
+
+Players.PlayerAdded:Connect(function(player)
+	local data = loadPlayerData(player)
+	if not data or #data.party == 0 then
+		local starter = Brainrots.createInstance("chimpanzini_bananini", 1)
+		data = {
+			collection = { starter },
+			party = { starter },
+			activeIndex = 1,
+			bag = {},
+			stats = {
+				totalCaught = 0,
+				battlesWon = 0,
+				battlesLost = 0,
+				totalReleased = 0,
+			},
+			dexSeen = {},
+			dexCaught = {},
+			settings = { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 },
+		}
+	end
+	if not data.settings then
+		data.settings = { musicEnabled = true, sfxEnabled = true, cameraSensitivity = 1 }
+	end
 	playerData[player] = data
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+	savePlayerData(player)
 	activeBattles[player] = nil
 	playerData[player] = nil
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(300)
+		for _, player in ipairs(Players:GetPlayers()) do
+			if playerData[player] then
+				savePlayerData(player)
+			end
+		end
+	end
 end)
 
 task.spawn(function()

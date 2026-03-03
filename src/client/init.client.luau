@@ -20,8 +20,11 @@ local MoveBrainrotBetweenPartyAndCollection: RemoteFunction =
 local ReleaseFromCollection: RemoteFunction =
 	RemotesFolder:WaitForChild("ReleaseFromCollection") :: RemoteFunction
 local OpenPC: RemoteEvent = RemotesFolder:WaitForChild("OpenPC") :: RemoteEvent
+local BattleInvite: RemoteEvent = RemotesFolder:FindFirstChild("BattleInvite") or RemotesFolder:WaitForChild("BattleInvite") :: RemoteEvent
+local BattleInviteResponse: RemoteEvent = RemotesFolder:FindFirstChild("BattleInviteResponse") or RemotesFolder:WaitForChild("BattleInviteResponse") :: RemoteEvent
+local SetSettings: RemoteEvent = RemotesFolder:FindFirstChild("SetSettings") or RemotesFolder:WaitForChild("SetSettings") :: RemoteEvent
 
-local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotList")
+local BrainrotModelsFolder = ReplicatedStorage:FindFirstChild("BrainrotList") or ReplicatedStorage:FindFirstChild("BrainrotModels") or ReplicatedStorage:WaitForChild("BrainrotModels")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Brainrots = require(Shared:WaitForChild("Brainrots"))
 
@@ -305,8 +308,9 @@ local function createBattleGui()
 					entry.displayName,
 					entry.quantity or 1
 				)
-				if entry.id == "troppi_ball" then
-					BattleRequest:FireServer("capture")
+				local ballIds = { ["troppi_ball"] = true, ["super_ball"] = true, ["ultra_ball"] = true }
+				if ballIds[entry.id] then
+					BattleRequest:FireServer("capture", entry.id)
 				else
 					BattleRequest:FireServer("useItem", entry.id)
 				end
@@ -425,7 +429,8 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 			hpLabel.Text = hpText
 		end
 		if statusLabel then
-			statusLabel.Text = ""
+			local status = (battleState.playerBrainrot :: any).statusEffect
+			statusLabel.Text = status and (status:sub(1, 1):upper() .. status:sub(2)) or ""
 		end
 	end
 
@@ -441,7 +446,8 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 			hpLabel.Text = hpText
 		end
 		if statusLabel then
-			statusLabel.Text = ""
+			local status = (battleState.enemyBrainrot :: any).statusEffect
+			statusLabel.Text = status and (status:sub(1, 1):upper() .. status:sub(2)) or ""
 		end
 	end
 
@@ -985,14 +991,20 @@ local function createMenuGui()
 		stroke.Parent = socket
 	end
 
+	local dexFrame = Instance.new("Frame")
+	dexFrame.Name = "DexFrame"
+	dexFrame.Size = UDim2.new(1, 0, 1, 0)
+	dexFrame.BackgroundTransparency = 1
+	dexFrame.Visible = false
+	dexFrame.Parent = contentBody
+
 	local dexList = Instance.new("ScrollingFrame")
 	dexList.Name = "DexList"
-	dexList.Size = UDim2.new(1, 0, 1, 0)
+	dexList.Size = UDim2.new(0.45, 0, 1, 0)
 	dexList.CanvasSize = UDim2.new(0, 0, 0, 0)
 	dexList.BackgroundTransparency = 1
 	dexList.ScrollBarThickness = 4
-	dexList.Visible = false
-	dexList.Parent = contentBody
+	dexList.Parent = dexFrame
 
 	local dexLayout = Instance.new("UIListLayout")
 	dexLayout.FillDirection = Enum.FillDirection.Vertical
@@ -1000,6 +1012,20 @@ local function createMenuGui()
 	dexLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 	dexLayout.Padding = UDim.new(0, 4)
 	dexLayout.Parent = dexList
+
+	local dexDetail = Instance.new("TextLabel")
+	dexDetail.Name = "DexDetail"
+	dexDetail.Size = UDim2.new(0.52, 0, 1, 0)
+	dexDetail.Position = UDim2.new(0.48, 0, 0, 0)
+	dexDetail.BackgroundTransparency = 1
+	dexDetail.TextColor3 = Color3.new(1, 1, 1)
+	dexDetail.Font = Enum.Font.Gotham
+	dexDetail.TextSize = 16
+	dexDetail.TextXAlignment = Enum.TextXAlignment.Left
+	dexDetail.TextYAlignment = Enum.TextYAlignment.Top
+	dexDetail.TextWrapped = true
+	dexDetail.Text = "Select a brainrot to view details."
+	dexDetail.Parent = dexFrame
 
 	local settingsFrame = Instance.new("Frame")
 	settingsFrame.Name = "SettingsFrame"
@@ -1015,9 +1041,23 @@ local function createMenuGui()
 	friendsFrame.Visible = false
 	friendsFrame.Parent = contentBody
 
+	local friendsStatusLabel = Instance.new("TextLabel")
+	friendsStatusLabel.Name = "FriendsStatus"
+	friendsStatusLabel.Size = UDim2.new(1, 0, 0, 24)
+	friendsStatusLabel.Position = UDim2.new(0, 0, 0, 0)
+	friendsStatusLabel.BackgroundTransparency = 1
+	friendsStatusLabel.TextColor3 = Color3.fromRGB(160, 220, 160)
+	friendsStatusLabel.Font = Enum.Font.Gotham
+	friendsStatusLabel.TextSize = 14
+	friendsStatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+	friendsStatusLabel.Text = ""
+	friendsStatusLabel.Visible = false
+	friendsStatusLabel.Parent = friendsFrame
+
 	local friendsList = Instance.new("ScrollingFrame")
 	friendsList.Name = "FriendsList"
-	friendsList.Size = UDim2.new(1, 0, 1, 0)
+	friendsList.Size = UDim2.new(1, 0, 1, -28)
+	friendsList.Position = UDim2.new(0, 0, 0, 28)
 	friendsList.CanvasSize = UDim2.new(0, 0, 0, 0)
 	friendsList.BackgroundTransparency = 1
 	friendsList.ScrollBarThickness = 4
@@ -1095,20 +1135,27 @@ local function createMenuGui()
 			setValue(not getValue())
 			update()
 		end)
-		return row
+		return row, update
 	end
 
-	createSettingsToggle(settingsFrame, "MusicToggle", "Music", 32, function()
+	local musicToggleRow, refreshMusic = createSettingsToggle(settingsFrame, "MusicToggle", "Music", 32, function()
 		return musicGroup.Volume > 0.5
 	end, function(v)
 		musicGroup.Volume = v and 1 or 0
+		SetSettings:FireServer(v, nil, nil)
 	end)
 
-	createSettingsToggle(settingsFrame, "SFXToggle", "Sound Effects", 68, function()
+	local _, refreshSFX = createSettingsToggle(settingsFrame, "SFXToggle", "Sound Effects", 68, function()
 		return sfxGroup.Volume > 0.5
 	end, function(v)
 		sfxGroup.Volume = v and 1 or 0
+		SetSettings:FireServer(nil, v, nil)
 	end)
+
+	local refreshSettingsToggles = function()
+		if refreshMusic then refreshMusic() end
+		if refreshSFX then refreshSFX() end
+	end
 
 	local cameraRow = Instance.new("Frame")
 	cameraRow.Name = "CameraSensitivity"
@@ -1149,6 +1196,7 @@ local function createMenuGui()
 			cameraSensitivity = 0.5
 		end
 		cameraSlider.Text = string.format("%.1f", cameraSensitivity)
+		SetSettings:FireServer(nil, nil, cameraSensitivity)
 		local cam = workspace.CurrentCamera
 		if cam then
 			cam.CameraSubject = cam.CameraSubject
@@ -1445,7 +1493,7 @@ local function createMenuGui()
 	local function hideAllContent()
 		bagList.Visible = false
 		trainerFrame.Visible = false
-		dexList.Visible = false
+		dexFrame.Visible = false
 		settingsFrame.Visible = false
 		friendsFrame.Visible = false
 		brainrotsFrame.Visible = false
@@ -1547,25 +1595,119 @@ local function createMenuGui()
 			end
 		end
 
+		local function setupBrainrotIcon(viewport: ViewportFrame, monId: string)
+			for _, child in ipairs(viewport:GetChildren()) do
+				child:Destroy()
+			end
+
+			local lookupName = getModelLookupName(monId)
+			local template = BrainrotModelsFolder:FindFirstChild(lookupName)
+			if not template or not template:IsA("Model") then
+				return
+			end
+
+			local model = template:Clone()
+			model.Parent = viewport
+
+			local primaryPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
+			if not primaryPart then
+				return
+			end
+
+			local camera = Instance.new("Camera")
+			camera.Parent = viewport
+			viewport.CurrentCamera = camera
+
+			local cf = primaryPart.CFrame
+			local offset = cf.Position + Vector3.new(0, 0, 6)
+			camera.CFrame = CFrame.new(offset, cf.Position)
+		end
+
 		local function rebuildDex()
 			clearChildren(dexList)
 			dexLayout.Parent = dexList
 
 			local seen = data.dexSeen or {}
 			local caught = data.dexCaught or {}
-
+			local ids = {}
 			for id, _ in pairs(seen) do
-				local status = caught[id] and "Caught" or "Seen"
-				local label = Instance.new("TextLabel")
-				label.Size = UDim2.new(1, -4, 0, 20)
-				label.BackgroundTransparency = 1
-				label.TextColor3 = Color3.new(1, 1, 1)
-				label.Font = Enum.Font.Gotham
-				label.TextSize = 14
-				label.TextXAlignment = Enum.TextXAlignment.Left
-				label.Text = string.format("%s - %s", id, status)
-				label.Parent = dexList
+				table.insert(ids, id)
 			end
+			table.sort(ids)
+
+			for _, id in ipairs(ids) do
+				local status = caught[id] and "Caught" or "Seen"
+				local def = Brainrots.getById(id)
+				local displayName = def and def.displayName or id
+
+				local row = Instance.new("TextButton")
+				row.Size = UDim2.new(1, -4, 0, 56)
+				row.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+				row.Text = ""
+				row.AutoButtonColor = true
+				row.Parent = dexList
+
+				local rowCorner = Instance.new("UICorner")
+				rowCorner.CornerRadius = UDim.new(0, 6)
+				rowCorner.Parent = row
+
+				local icon = Instance.new("ViewportFrame")
+				icon.Name = "Icon"
+				icon.Size = UDim2.new(0, 48, 0, 48)
+				icon.Position = UDim2.new(0, 4, 0.5, -24)
+				icon.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+				icon.BorderSizePixel = 0
+				icon.Parent = row
+
+				setupBrainrotIcon(icon, id)
+
+				local nameLabel = Instance.new("TextLabel")
+				nameLabel.Size = UDim2.new(1, -60, 0, 24)
+				nameLabel.Position = UDim2.new(0, 56, 0, 4)
+				nameLabel.BackgroundTransparency = 1
+				nameLabel.TextColor3 = Color3.new(1, 1, 1)
+				nameLabel.Font = Enum.Font.GothamBold
+				nameLabel.TextSize = 14
+				nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+				nameLabel.Text = displayName
+				nameLabel.Parent = row
+
+				local statusLabel = Instance.new("TextLabel")
+				statusLabel.Size = UDim2.new(1, -60, 0, 20)
+				statusLabel.Position = UDim2.new(0, 56, 0, 28)
+				statusLabel.BackgroundTransparency = 1
+				statusLabel.TextColor3 = caught[id] and Color3.fromRGB(160, 220, 160) or Color3.fromRGB(180, 180, 200)
+				statusLabel.Font = Enum.Font.Gotham
+				statusLabel.TextSize = 12
+				statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+				statusLabel.Text = status
+				statusLabel.Parent = row
+
+				row.MouseButton1Click:Connect(function()
+					local desc = def and def.description or "No description."
+					local stats = def and def.baseStats or {}
+					local brainrotType = def and (def :: any).type or "Neutral"
+					local movesText = ""
+					if def and def.moves then
+						for _, move in ipairs(def.moves) do
+							movesText ..= string.format("- %s (Pwr %d)\n", move.name, move.power or 0)
+						end
+					end
+					dexDetail.Text = string.format(
+						"%s [%s]\n%s\n\nBase Stats:\nHP: %d  ATK: %d  DEF: %d  SPD: %d\n\nMoves:\n%s",
+						displayName,
+						brainrotType,
+						desc,
+						stats.maxHP or 30,
+						stats.attack or 8,
+						stats.defense or 8,
+						stats.speed or 8,
+						movesText ~= "" and movesText or "None"
+					)
+				end)
+			end
+
+			dexList.CanvasSize = UDim2.new(0, 0, 0, #ids * 60)
 		end
 
 		local function rebuildFriends()
@@ -1682,41 +1824,13 @@ local function createMenuGui()
 
 					inviteBtn.MouseButton1Click:Connect(function()
 						if friend.IsOnline then
-							-- Placeholder: battle invite would fire a RemoteEvent here
+							BattleInvite:FireServer(friend.Id)
 						end
 					end)
 				end
 
 				friendsList.CanvasSize = UDim2.new(0, 0, 0, #friendRows * 40)
 			end)
-		end
-
-		local function setupBrainrotIcon(viewport: ViewportFrame, monId: string)
-			for _, child in ipairs(viewport:GetChildren()) do
-				child:Destroy()
-			end
-
-			local lookupName = getModelLookupName(monId)
-			local template = BrainrotModelsFolder:FindFirstChild(lookupName)
-			if not template or not template:IsA("Model") then
-				return
-			end
-
-			local model = template:Clone()
-			model.Parent = viewport
-
-			local primaryPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
-			if not primaryPart then
-				return
-			end
-
-			local camera = Instance.new("Camera")
-			camera.Parent = viewport
-			viewport.CurrentCamera = camera
-
-			local cf = primaryPart.CFrame
-			local offset = cf.Position + Vector3.new(0, 0, 6)
-			camera.CFrame = CFrame.new(offset, cf.Position)
 		end
 
 		local function rebuildBrainrots()
@@ -1966,10 +2080,16 @@ local function createMenuGui()
 			trainerFrame.Visible = true
 		elseif section == "dex" then
 			contentLabel.Text = "Troppi-dex"
-			dexList.Visible = true
+			dexFrame.Visible = true
 		elseif section == "settings" then
 			contentLabel.Text = "Settings"
 			settingsFrame.Visible = true
+			local s = data.settings or {}
+			musicGroup.Volume = (s.musicEnabled == false) and 0 or 1
+			sfxGroup.Volume = (s.sfxEnabled == false) and 0 or 1
+			cameraSensitivity = s.cameraSensitivity or 1
+			cameraSlider.Text = string.format("%.1f", cameraSensitivity)
+			refreshSettingsToggles()
 		elseif section == "friends" then
 			contentLabel.Text = "Friends"
 			friendsFrame.Visible = true
@@ -2002,6 +2122,15 @@ local function createMenuGui()
 
 	settingsButton.MouseButton1Click:Connect(function()
 		openSection("settings")
+	end)
+
+	BattleInviteResponse.OnClientEvent:Connect(function(success: boolean, message: string)
+		friendsStatusLabel.Text = message
+		friendsStatusLabel.TextColor3 = success and Color3.fromRGB(160, 220, 160) or Color3.fromRGB(255, 160, 160)
+		friendsStatusLabel.Visible = true
+		task.delay(4, function()
+			friendsStatusLabel.Visible = false
+		end)
 	end)
 
 	friendsButton.MouseButton1Click:Connect(function()
@@ -2278,6 +2407,15 @@ local function createMenuGui()
 	OpenPC.OnClientEvent:Connect(function()
 		menuFrame.Visible = true
 		openSection("pc")
+	end)
+
+	task.spawn(function()
+		local data = GetTrainerData:InvokeServer()
+		if data and data.settings then
+			local s = data.settings
+			musicGroup.Volume = (s.musicEnabled == false) and 0 or 1
+			sfxGroup.Volume = (s.sfxEnabled == false) and 0 or 1
+		end
 	end)
 end
 
