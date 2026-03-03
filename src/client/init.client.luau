@@ -255,11 +255,95 @@ local function createBattleGui()
 	bagMainButton.MouseButton1Click:Connect(function()
 		mainButtonsFrame.Visible = false
 		bagFrame.Visible = true
+
+		for _, child in ipairs(bagListFrame:GetChildren()) do
+			if child:IsA("GuiObject") then
+				child:Destroy()
+			end
+		end
+		bagListLayout.Parent = bagListFrame
+		bagDetail.Text = ""
+
+		local data = GetTrainerData:InvokeServer()
+		if not data then
+			return
+		end
+
+		for _, entry in ipairs(data.bag or {}) do
+			if not entry.usableInBattle then
+				continue
+			end
+			local b = Instance.new("TextButton")
+			b.Size = UDim2.new(1, 0, 0, 24)
+			b.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+			b.TextColor3 = Color3.new(1, 1, 1)
+			b.Font = Enum.Font.Gotham
+			b.TextSize = 14
+			b.TextXAlignment = Enum.TextXAlignment.Left
+			b.Text = string.format(" %s x%d", entry.displayName, entry.quantity or 1)
+			b.Parent = bagListFrame
+
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 6)
+			c.Parent = b
+
+			b.MouseButton1Click:Connect(function()
+				bagDetail.Text = string.format(
+					"%s\n\nQty: %d\n\nUsable in battle.",
+					entry.displayName,
+					entry.quantity or 1
+				)
+				BattleRequest:FireServer("useItem", entry.id)
+			end)
+		end
 	end)
 
 	brainrotsMainButton.MouseButton1Click:Connect(function()
 		mainButtonsFrame.Visible = false
 		switchFrame.Visible = true
+
+		for _, child in ipairs(switchListFrame:GetChildren()) do
+			if child:IsA("GuiObject") then
+				child:Destroy()
+			end
+		end
+		switchLayout.Parent = switchListFrame
+
+		local data = GetTrainerData:InvokeServer()
+		if not data then
+			return
+		end
+
+		local party = data.party or {}
+		local leaderIndex = data.leaderIndex or 1
+		for index, mon in ipairs(party) do
+			local slot = Instance.new("TextLabel")
+			slot.Size = UDim2.new(1, 0, 0, 40)
+			if mon.hp <= 0 then
+				slot.BackgroundColor3 = Color3.fromRGB(70, 40, 40)
+			else
+				slot.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+			end
+			slot.TextColor3 = Color3.new(1, 1, 1)
+			slot.Font = Enum.Font.Gotham
+			slot.TextSize = 14
+			slot.TextXAlignment = Enum.TextXAlignment.Left
+
+			local leaderMark = (index == leaderIndex) and " ★" or ""
+			slot.Text = string.format(
+				" %s Lv.%d%s  HP %d/%d",
+				mon.displayName,
+				mon.level,
+				leaderMark,
+				mon.hp,
+				mon.maxHP
+			)
+			slot.Parent = switchListFrame
+
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(0, 6)
+			c.Parent = slot
+		end
 	end)
 
 	runMainButton.MouseButton1Click:Connect(function()
@@ -302,6 +386,8 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 	local playerPanel = frame:FindFirstChild("PlayerPanel") :: Frame
 	local enemyPanel = frame:FindFirstChild("EnemyPanel") :: Frame
 	local messageLabel = frame:FindFirstChild("MessageLabel") :: TextLabel
+	local interactFrame = frame:FindFirstChild("InteractFrame") :: Frame
+	local fightFrame = interactFrame and (interactFrame:FindFirstChild("FightFrame") :: Frame)
 
 	if playerPanel and battleState.playerBrainrot then
 		local nameLabel = playerPanel:FindFirstChild("PlayerNameLabel") :: TextLabel
@@ -337,6 +423,48 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 
 	if messageLabel then
 		messageLabel.Text = message or ""
+	end
+
+	if fightFrame and battleState.playerBrainrot then
+		local movesList = fightFrame:FindFirstChild("MovesList") :: Frame
+		if movesList then
+			for _, child in ipairs(movesList:GetChildren()) do
+				if child:IsA("GuiObject") then
+					child:Destroy()
+				end
+			end
+			local layout = movesList:FindFirstChildOfClass("UIListLayout")
+			if not layout then
+				layout = Instance.new("UIListLayout")
+				layout.FillDirection = Enum.FillDirection.Vertical
+				layout.Padding = UDim.new(0, 4)
+				layout.Parent = movesList
+			end
+
+			for _, move in ipairs(battleState.playerBrainrot.moves or {}) do
+				local b = Instance.new("TextButton")
+				b.Size = UDim2.new(1, 0, 0, 24)
+				b.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+				b.TextColor3 = Color3.new(1, 1, 1)
+				b.Font = Enum.Font.Gotham
+				b.TextSize = 14
+				b.TextXAlignment = Enum.TextXAlignment.Left
+				local acc = math.floor(((move.accuracy or 1) * 100) + 0.5)
+				b.Text = string.format(" %s  (Pow %d, Acc %d%%)", move.name or "Move", move.power or 0, acc)
+				b.Parent = movesList
+
+				local c = Instance.new("UICorner")
+				c.CornerRadius = UDim.new(0, 6)
+				c.Parent = b
+
+				local moveId = move.id
+				b.MouseButton1Click:Connect(function()
+					if moveId then
+						BattleRequest:FireServer("move", moveId)
+					end
+				end)
+			end
+		end
 	end
 
 	if battleState.state ~= "ongoing" then
