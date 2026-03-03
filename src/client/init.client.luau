@@ -429,16 +429,44 @@ local function formatDiag(brainrot)
 	return name, hpText
 end
 
+local function getHealthbarColor(maxHP: number, currentHP: number): Color3
+	if currentHP <= 0 then
+		return Color3.fromRGB(100, 100, 100)
+	end
+	local ratio = currentHP / math.max(maxHP, 1)
+	if ratio < 0.25 then
+		return Color3.fromRGB(220, 80, 80)
+	end
+	if ratio < 0.5 then
+		return Color3.fromRGB(220, 200, 60)
+	end
+	return Color3.fromRGB(80, 200, 80)
+end
+
+local function getHealthbarOffsetForModel(model: Model, attachPart: BasePart): number
+	local ok, cf, size = pcall(function()
+		return model:GetBoundingBox()
+	end)
+	if ok and cf and size then
+		local topY = cf.Position.Y + size.Y / 2
+		local attachY = attachPart.Position.Y
+		return math.max(topY - attachY + 0.5, 1)
+	end
+	return 2.5
+end
+
 local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: number): (BillboardGui, Frame)
 	local attachPart = model:FindFirstChildWhichIsA("BasePart") :: BasePart
 	if not attachPart then
 		return nil, nil
 	end
 
+	local offsetY = getHealthbarOffsetForModel(model, attachPart)
+
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "Healthbar"
 	billboard.Size = UDim2.new(0, 80, 0, 12)
-	billboard.StudsOffset = Vector3.new(0, 2.5, 0)
+	billboard.StudsOffset = Vector3.new(0, offsetY, 0)
 	billboard.AlwaysOnTop = true
 	billboard.Parent = attachPart
 
@@ -456,7 +484,7 @@ local function attachHealthbarToModel(model: Model, maxHP: number, currentHP: nu
 	local fill = Instance.new("Frame")
 	fill.Name = "Fill"
 	fill.Size = UDim2.new(math.clamp(currentHP / math.max(maxHP, 1), 0, 1), 0, 1, 0)
-	fill.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
+	fill.BackgroundColor3 = getHealthbarColor(maxHP, currentHP)
 	fill.BorderSizePixel = 0
 	fill.Parent = bg
 
@@ -491,8 +519,7 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		end
 		if battlePlayerHealthbarFill then
 			battlePlayerHealthbarFill.Size = UDim2.new(math.clamp(mon.hp / math.max(mon.maxHP, 1), 0, 1), 0, 1, 0)
-			battlePlayerHealthbarFill.BackgroundColor3 = mon.hp <= 0 and Color3.fromRGB(100, 100, 100)
-				or (mon.hp < mon.maxHP / 4 and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(80, 200, 80))
+			battlePlayerHealthbarFill.BackgroundColor3 = getHealthbarColor(mon.maxHP, mon.hp)
 		end
 	end
 	if battleEnemyModel and battleState.enemyBrainrot then
@@ -503,8 +530,7 @@ BattleUpdate.OnClientEvent:Connect(function(battleState, message: string)
 		end
 		if battleEnemyHealthbarFill then
 			battleEnemyHealthbarFill.Size = UDim2.new(math.clamp(mon.hp / math.max(mon.maxHP, 1), 0, 1), 0, 1, 0)
-			battleEnemyHealthbarFill.BackgroundColor3 = mon.hp <= 0 and Color3.fromRGB(100, 100, 100)
-				or (mon.hp < mon.maxHP / 4 and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(80, 200, 80))
+			battleEnemyHealthbarFill.BackgroundColor3 = getHealthbarColor(mon.maxHP, mon.hp)
 		end
 	end
 
