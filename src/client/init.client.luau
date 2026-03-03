@@ -882,6 +882,76 @@ local function createMenuGui()
 	trainerStatsLabel.TextWrapped = true
 	trainerStatsLabel.Parent = trainerFrame
 
+	local trainerDiagnosticsLabel = Instance.new("TextLabel")
+	trainerDiagnosticsLabel.Name = "TrainerDiagnostics"
+	trainerDiagnosticsLabel.Size = UDim2.new(1, 0, 0, 40)
+	trainerDiagnosticsLabel.Position = UDim2.new(0, 0, 0, 96)
+	trainerDiagnosticsLabel.BackgroundTransparency = 1
+	trainerDiagnosticsLabel.TextColor3 = Color3.fromRGB(180, 220, 255)
+	trainerDiagnosticsLabel.Font = Enum.Font.Gotham
+	trainerDiagnosticsLabel.TextSize = 14
+	trainerDiagnosticsLabel.TextXAlignment = Enum.TextXAlignment.Left
+	trainerDiagnosticsLabel.TextYAlignment = Enum.TextYAlignment.Top
+	trainerDiagnosticsLabel.TextWrapped = true
+	trainerDiagnosticsLabel.Text = ""
+	trainerDiagnosticsLabel.Parent = trainerFrame
+
+	local trainerImage = Instance.new("ImageLabel")
+	trainerImage.Name = "TrainerImage"
+	trainerImage.Size = UDim2.new(0, 160, 0, 160)
+	trainerImage.AnchorPoint = Vector2.new(0.5, 0)
+	trainerImage.Position = UDim2.new(0.5, 0, 0, 140)
+	trainerImage.BackgroundTransparency = 1
+	trainerImage.ScaleType = Enum.ScaleType.Fit
+	trainerImage.Parent = trainerFrame
+
+	local badgesFrame = Instance.new("Frame")
+	badgesFrame.Name = "BadgesFrame"
+	badgesFrame.Size = UDim2.new(1, -20, 0, 40)
+	badgesFrame.Position = UDim2.new(0, 10, 1, -50)
+	badgesFrame.BackgroundTransparency = 1
+	badgesFrame.Parent = trainerFrame
+
+	local badgesLabel = Instance.new("TextLabel")
+	badgesLabel.Name = "BadgesLabel"
+	badgesLabel.Size = UDim2.new(0, 80, 1, 0)
+	badgesLabel.Position = UDim2.new(0, 0, 0, 0)
+	badgesLabel.BackgroundTransparency = 1
+	badgesLabel.TextColor3 = Color3.new(1, 1, 1)
+	badgesLabel.Font = Enum.Font.GothamBold
+	badgesLabel.TextSize = 14
+	badgesLabel.TextXAlignment = Enum.TextXAlignment.Left
+	badgesLabel.Text = "Badges:"
+	badgesLabel.Parent = badgesFrame
+
+	local badgesList = Instance.new("Frame")
+	badgesList.Name = "BadgesList"
+	badgesList.Size = UDim2.new(1, -90, 1, 0)
+	badgesList.Position = UDim2.new(0, 90, 0, 0)
+	badgesList.BackgroundTransparency = 1
+	badgesList.Parent = badgesFrame
+
+	local badgesLayout = Instance.new("UIListLayout")
+	badgesLayout.FillDirection = Enum.FillDirection.Horizontal
+	badgesLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	badgesLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	badgesLayout.Padding = UDim.new(0, 6)
+	badgesLayout.Parent = badgesList
+
+	for i = 1, 8 do
+		local socket = Instance.new("Frame")
+		socket.Name = "BadgeSocket" .. i
+		socket.Size = UDim2.new(0, 32, 0, 32)
+		socket.BackgroundTransparency = 1
+		socket.Parent = badgesList
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Thickness = 2
+		stroke.Color = Color3.fromRGB(140, 140, 200)
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		stroke.Parent = socket
+	end
+
 	local dexList = Instance.new("ScrollingFrame")
 	dexList.Name = "DexList"
 	dexList.Size = UDim2.new(1, 0, 1, 0)
@@ -1054,13 +1124,46 @@ local function createMenuGui()
 
 		local function rebuildTrainerCard()
 			trainerNameLabel.Text = "Trainer: " .. (data.trainerName or LocalPlayer.Name)
+
 			local stats = data.stats or {}
 			trainerStatsLabel.Text = string.format(
-				"Caught: %d\nBattles Won: %d\nBattles Lost: %d",
+				"Total Brainrots Caught: %d\nBattles Won: %d\nBattles Lost: %d",
 				stats.totalCaught or 0,
 				stats.battlesWon or 0,
 				stats.battlesLost or 0
 			)
+
+			local dexSeen = data.dexSeen or {}
+			local dexCaught = data.dexCaught or {}
+
+			local uniqueSeen = 0
+			for _id, _ in pairs(dexSeen) do
+				uniqueSeen += 1
+			end
+
+			local uniqueCaught = 0
+			for _id, _ in pairs(dexCaught) do
+				uniqueCaught += 1
+			end
+
+			trainerDiagnosticsLabel.Text = string.format(
+				"Brainrots caught: %d\nUnique brainrots seen: %d",
+				uniqueCaught,
+				uniqueSeen
+			)
+
+			if trainerImage.Image == "" then
+				local success, thumb = pcall(function()
+					return Players:GetUserThumbnailAsync(
+						LocalPlayer.UserId,
+						Enum.ThumbnailType.HeadShot,
+						Enum.ThumbnailSize.Size420x420
+					)
+				end)
+				if success and thumb then
+					trainerImage.Image = thumb
+				end
+			end
 		end
 
 		local function rebuildDex()
