@@ -77,28 +77,7 @@
       }
     },
 
-    "StarterPack": {
-      "Sword": {
-        "$className": "Tool",
-        "$properties": {
-          "Name": "Sword",
-          "RequiresHandle": true,
-          "CanBeDropped": true
-        },
-        "Handle": {
-          "$className": "Part",
-          "$properties": {
-            "Name": "Handle",
-            "Size": [
-              1,
-              4,
-              1
-            ],
-            "Anchored": false
-          }
-        }
-      }
-    },
+    "StarterPack": {},
 
     "Workspace": {
       "SpawnLocation": {
