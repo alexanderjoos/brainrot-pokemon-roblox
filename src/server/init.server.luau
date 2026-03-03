@@ -793,7 +793,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				msg = msg .. (playerSkipMsg or "Your brainrot couldn't move! ") .. " "
 			elseif playerHit then
 				applyDamage(enemyMon, playerDamage)
-				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage! "
+				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage!" .. effectivenessText(playerEff) .. " "
 				tryApplyStatus(enemyMon, chosenMove)
 			else
 				msg = msg .. "Your attack missed! "
@@ -815,7 +815,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				msg = msg .. (enemySkipMsg or (enemyMon.displayName .. " couldn't move! ")) .. " "
 			elseif enemyHit then
 				applyDamage(playerMon, enemyDamage)
-				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage! "
+				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage!" .. effectivenessText(enemyEff) .. " "
 				tryApplyStatus(playerMon, enemyMove)
 			else
 				msg = msg .. enemyMon.displayName .. "'s attack missed!"
@@ -835,7 +835,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				msg = msg .. (enemySkipMsg or (enemyMon.displayName .. " couldn't move! ")) .. " "
 			elseif enemyHit then
 				applyDamage(playerMon, enemyDamage)
-				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage! "
+				msg = msg .. enemyMon.displayName .. " used " .. (enemyMove and enemyMove.name or "an attack") .. " and dealt " .. tostring(enemyDamage) .. " damage!" .. effectivenessText(enemyEff) .. " "
 				tryApplyStatus(playerMon, enemyMove)
 			else
 				msg = msg .. enemyMon.displayName .. "'s attack missed! "
@@ -854,7 +854,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				msg = msg .. (playerSkipMsg or "Your brainrot couldn't move! ") .. " "
 			elseif playerHit then
 				applyDamage(enemyMon, playerDamage)
-				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage! "
+				msg = msg .. "You used " .. chosenMove.name .. " and dealt " .. tostring(playerDamage) .. " damage!" .. effectivenessText(playerEff) .. " "
 				tryApplyStatus(enemyMon, chosenMove)
 			else
 				msg = msg .. "Your attack missed! "
