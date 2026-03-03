@@ -41,43 +41,7 @@
         }
       },
       "BrainrotModels": {
-        "$className": "Folder",
-        "chimpanzini_bananini": {
-          "$className": "Model",
-          "Body": {
-            "$className": "Part",
-            "$properties": {
-              "Size": [2, 3, 1.5],
-              "Anchored": true,
-              "Color": [0.8, 0.7, 0.2],
-              "Material": "SmoothPlastic"
-            }
-          }
-        },
-        "sigma_skibidi": {
-          "$className": "Model",
-          "Body": {
-            "$className": "Part",
-            "$properties": {
-              "Size": [2, 3, 1.5],
-              "Anchored": true,
-              "Color": [0.2, 0.6, 0.9],
-              "Material": "SmoothPlastic"
-            }
-          }
-        },
-        "rizzlord_gpt": {
-          "$className": "Model",
-          "Body": {
-            "$className": "Part",
-            "$properties": {
-              "Size": [2, 3, 1.5],
-              "Anchored": true,
-              "Color": [0.6, 0.2, 0.8],
-              "Material": "SmoothPlastic"
-            }
-          }
-        }
+        "$path": "src/ReplicatedStorage/brainrotmodels.rbxm"
       }
     },
 
