@@ -16,6 +16,34 @@ local SetHeldItem: RemoteEvent = RemotesFolder:WaitForChild("SetHeldItem") :: Re
 local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: RemoteEvent
 local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
 
+local MoveBrainrotBetweenPartyAndCollectionRemote =
+	RemotesFolder:FindFirstChild("MoveBrainrotBetweenPartyAndCollection") :: RemoteFunction?
+if not MoveBrainrotBetweenPartyAndCollectionRemote then
+	local newRemote = Instance.new("RemoteFunction")
+	newRemote.Name = "MoveBrainrotBetweenPartyAndCollection"
+	newRemote.Parent = RemotesFolder
+	MoveBrainrotBetweenPartyAndCollectionRemote = newRemote
+end
+local MoveBrainrotBetweenPartyAndCollection = MoveBrainrotBetweenPartyAndCollectionRemote :: RemoteFunction
+
+local ReleaseFromCollectionRemote = RemotesFolder:FindFirstChild("ReleaseFromCollection") :: RemoteFunction?
+if not ReleaseFromCollectionRemote then
+	local newRelease = Instance.new("RemoteFunction")
+	newRelease.Name = "ReleaseFromCollection"
+	newRelease.Parent = RemotesFolder
+	ReleaseFromCollectionRemote = newRelease
+end
+local ReleaseFromCollection = ReleaseFromCollectionRemote :: RemoteFunction
+
+local OpenPCRemote = RemotesFolder:FindFirstChild("OpenPC") :: RemoteEvent?
+if not OpenPCRemote then
+	local newEvent = Instance.new("RemoteEvent")
+	newEvent.Name = "OpenPC"
+	newEvent.Parent = RemotesFolder
+	OpenPCRemote = newEvent
+end
+local OpenPC = OpenPCRemote :: RemoteEvent
+
 type BrainrotInstance = {
 	id: string,
 	displayName: string,
@@ -797,6 +825,100 @@ ReleaseBrainrot.OnServerEvent:Connect(function(player: Player, partyIndex: numbe
 		data.activeIndex -= 1
 	end
 end)
+
+MoveBrainrotBetweenPartyAndCollection.OnServerInvoke = function(player: Player, partyIndex: number?, collectionIndex: number?)
+	local data = playerData[player]
+	if not data then
+		return false, "No trainer data."
+	end
+
+	if activeBattles[player] then
+		return false, "You can't manage brainrots during a battle."
+	end
+
+	if partyIndex and collectionIndex then
+		local partyMon = data.party[partyIndex]
+		local collectionMon = data.collection[collectionIndex]
+		if not partyMon or not collectionMon then
+			return false, "Invalid indices."
+		end
+
+		data.party[partyIndex], data.collection[collectionIndex] = collectionMon, partyMon
+		return true
+	elseif partyIndex then
+		if #data.party <= 1 then
+			return false, "You must keep at least one brainrot in your party."
+		end
+
+		local mon = data.party[partyIndex]
+		if not mon then
+			return false, "Invalid party index."
+		end
+
+		if #data.collection >= COLLECTION_CAP then
+			return false, "Your collection is full."
+		end
+
+		table.insert(data.collection, mon)
+		table.remove(data.party, partyIndex)
+
+		if data.activeIndex == partyIndex then
+			data.activeIndex = math.clamp(partyIndex, 1, #data.party)
+		elseif data.activeIndex > partyIndex then
+			data.activeIndex -= 1
+		end
+
+		return true
+	elseif collectionIndex then
+		if #data.party >= MAX_PARTY_SIZE then
+			return false, "Your party is full."
+		end
+
+		local mon = data.collection[collectionIndex]
+		if not mon then
+			return false, "Invalid collection index."
+		end
+
+		table.insert(data.party, mon)
+		table.remove(data.collection, collectionIndex)
+
+		if #data.party == 1 then
+			data.activeIndex = 1
+		end
+
+		return true
+	end
+
+	return false, "No indices provided."
+end
+
+ReleaseFromCollection.OnServerInvoke = function(player: Player, collectionIndex: number)
+	local data = playerData[player]
+	if not data then
+		return false, "No trainer data."
+	end
+
+	if activeBattles[player] then
+		return false, "You can't release brainrots during a battle."
+	end
+
+	local mon = data.collection[collectionIndex]
+	if not mon then
+		return false, "Invalid collection index."
+	end
+
+	for _, partyMon in ipairs(data.party) do
+		if partyMon == mon then
+			return false, "You can't release a brainrot that is in your party."
+		end
+	end
+
+	table.remove(data.collection, collectionIndex)
+
+	data.stats.totalReleased = (data.stats.totalReleased or 0) + 1
+
+	return true
+end
 
 Players.PlayerAdded:Connect(function(player)
 	local starter = Brainrots.createInstance("chimpanzini_bananini", 1)
