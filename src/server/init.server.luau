@@ -75,6 +75,15 @@ if not SetSettingsRemote then
 end
 local SetSettings = SetSettingsRemote :: RemoteEvent
 
+local UseItemOutsideBattleRemote = RemotesFolder:FindFirstChild("UseItemOutsideBattle") :: RemoteFunction?
+if not UseItemOutsideBattleRemote then
+	local newFn = Instance.new("RemoteFunction")
+	newFn.Name = "UseItemOutsideBattle"
+	newFn.Parent = RemotesFolder
+	UseItemOutsideBattleRemote = newFn
+end
+local UseItemOutsideBattle = UseItemOutsideBattleRemote :: RemoteFunction
+
 type BrainrotInstance = {
 	id: string,
 	displayName: string,
@@ -180,6 +189,34 @@ end
 
 local function sendBattleAnimation(player: Player, action: string, payload: any?)
 	BattleAnimation:FireClient(player, action, payload)
+end
+
+local function calculateExpGain(playerMon: BrainrotInstance, enemyMon: BrainrotInstance): number
+	local baseExp = math.max(5, enemyMon.level * 10)
+	local levelDiff = enemyMon.level - (playerMon.level or 1)
+	if levelDiff > 0 then
+		baseExp = math.floor(baseExp * (1 + levelDiff * 0.15))
+	elseif levelDiff < 0 then
+		baseExp = math.floor(baseExp * math.max(0.5, 1 + levelDiff * 0.1))
+	end
+	if (playerMon :: any).heldItemId == "brainrot_treat" then
+		baseExp = math.floor(baseExp * 1.5)
+	end
+	return baseExp
+end
+
+local function grantExpAndNotifyLevelUp(player: Player, playerMon: BrainrotInstance, expGain: number)
+	if expGain <= 0 then
+		return
+	end
+	local levelsGained = Brainrots.gainExperience(playerMon, expGain)
+	if levelsGained > 0 then
+		sendBattleAnimation(player, "levelUp", {
+			brainrotId = playerMon.id,
+			displayName = playerMon.displayName,
+			newLevel = playerMon.level,
+		})
+	end
 end
 
 local function getBrainrotCenterSpawnCFrame(): CFrame?
@@ -557,6 +594,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 
 					data.stats.totalCaught += 1
 					markDexCaught(data, enemyMon.id)
+					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
 				end
 			end
 			battle.state = "finished"
@@ -729,11 +767,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				if data then
 					data.stats.battlesWon += 1
 					markDexCaught(data, enemyMon.id)
-					local expGain = math.max(5, enemyMon.level * 10)
-					if (playerMon :: any).heldItemId == "brainrot_treat" then
-						expGain = math.floor(expGain * 1.5)
-					end
-					Brainrots.gainExperience(playerMon, expGain)
+					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
 				end
 				sendBattleUpdate(player, battle, msg .. "The wild " .. enemyMon.displayName .. " fainted!")
 				endBattleForPlayer(player, "won")
@@ -793,11 +827,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 				if data then
 					data.stats.battlesWon += 1
 					markDexCaught(data, enemyMon.id)
-					local expGain = math.max(5, enemyMon.level * 10)
-					if (playerMon :: any).heldItemId == "brainrot_treat" then
-						expGain = math.floor(expGain * 1.5)
-					end
-					Brainrots.gainExperience(playerMon, expGain)
+					grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
 				end
 				sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
 				endBattleForPlayer(player, "won")
@@ -825,11 +855,7 @@ local function handleBattleRequest(player: Player, action: string, moveId: strin
 			if data then
 				data.stats.battlesWon += 1
 				markDexCaught(data, enemyMon.id)
-				local expGain = math.max(5, enemyMon.level * 10)
-				if (playerMon :: any).heldItemId == "brainrot_treat" then
-					expGain = math.floor(expGain * 1.5)
-				end
-				Brainrots.gainExperience(playerMon, expGain)
+				grantExpAndNotifyLevelUp(player, playerMon, calculateExpGain(playerMon, enemyMon))
 			end
 			sendBattleUpdate(player, battle, msg .. " The wild " .. enemyMon.displayName .. " fainted!")
 			endBattleForPlayer(player, "won")
@@ -1154,6 +1180,72 @@ SetSettings.OnServerEvent:Connect(function(player: Player, musicEnabled: boolean
 	if cameraSensitivity ~= nil then
 		data.settings.cameraSensitivity = cameraSensitivity
 	end
+end)
+
+UseItemOutsideBattle.OnServerInvoke = function(player: Player, itemId: string, partyIndex: number?): (boolean, string)
+	if activeBattles[player] then
+		return false, "You can't use items during a battle."
+	end
+
+	local data = playerData[player]
+	if not data then
+		return false, "No trainer data."
+	end
+
+	local entry = getBagItem(data, itemId)
+	local itemDef = Items.getById(itemId)
+	if not entry or not itemDef then
+		return false, "You don't have that item."
+	end
+
+	local effect = itemDef.effect
+	local hasHeal = effect and effect.heal
+	local hasRevive = effect and effect.revive
+	if not hasHeal and not hasRevive then
+		return false, "That item can't be used outside of battle."
+	end
+
+	partyIndex = partyIndex or 1
+	local mon = data.party[partyIndex]
+	if not mon then
+		return false, "Invalid party slot."
+	end
+
+	if hasRevive then
+		if mon.hp > 0 then
+			return false, mon.displayName .. " is already conscious."
+		end
+		mon.hp = math.max(1, math.floor(mon.maxHP * (effect.revive or 0.5)))
+		clearStatus(mon :: BrainrotInstance)
+	else
+		if mon.hp <= 0 then
+			return false, "You can't use that on a fainted brainrot. Try Henny!"
+		end
+		local healAmount = effect.heal or 20
+		local oldHp = mon.hp
+		mon.hp = math.min(mon.hp + healAmount, mon.maxHP)
+		if effect.clearStatus then
+			clearStatus(mon :: BrainrotInstance)
+		end
+		if mon.hp == oldHp then
+			return false, mon.displayName .. " is already at full HP."
+		end
+	end
+
+	entry.quantity -= 1
+	if entry.quantity <= 0 then
+		for i, e in ipairs(data.bag) do
+			if e == entry then
+				table.remove(data.bag, i)
+				break
+			end
+		end
+	end
+
+	if hasRevive then
+		return true, "You revived " .. mon.displayName .. " with " .. itemDef.displayName .. "!"
+	end
+	return true, "You used " .. itemDef.displayName .. " on " .. mon.displayName .. "!"
 end)
 
 MoveBrainrotBetweenPartyAndCollection.OnServerInvoke = function(player: Player, partyIndex: number?, collectionIndex: number?)

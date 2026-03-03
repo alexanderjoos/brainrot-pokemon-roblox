@@ -232,17 +232,19 @@ function module.createInstance(brainrotId: string, level: number?)
 	}
 end
 
-function module.gainExperience(mon, amount: number)
+function module.gainExperience(mon, amount: number): number
 	if not mon or amount <= 0 then
-		return
+		return 0
 	end
 
 	mon.exp = (mon.exp or 0) + amount
 	mon.nextLevelExp = mon.nextLevelExp or (20 + (mon.level - 1) * 10)
 
+	local levelsGained = 0
 	while mon.exp >= mon.nextLevelExp do
 		mon.exp -= mon.nextLevelExp
 		mon.level += 1
+		levelsGained += 1
 
 		mon.maxHP += 2
 		mon.hp = mon.maxHP
@@ -252,6 +254,7 @@ function module.gainExperience(mon, amount: number)
 
 		mon.nextLevelExp = math.floor(mon.nextLevelExp * 1.5)
 	end
+	return levelsGained
 end
 
 function module.getTypeEffectiveness(attackType: string?, defendType: string?): number
