@@ -17,6 +17,13 @@ local SetLeader: RemoteEvent = RemotesFolder:WaitForChild("SetLeader") :: Remote
 local ReleaseBrainrot: RemoteEvent = RemotesFolder:WaitForChild("ReleaseBrainrot") :: RemoteEvent
 
 local BrainrotModelsFolder = ReplicatedStorage:WaitForChild("BrainrotModels")
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Brainrots = require(Shared:WaitForChild("Brainrots"))
+
+local function getModelLookupName(brainrotId: string): string
+	local def = Brainrots.getById(brainrotId)
+	return (def and def.modelName) or brainrotId
+end
 
 local function createBattleGui()
 	local screenGui = Instance.new("ScreenGui")
@@ -511,7 +518,8 @@ local function createSimpleBattleArena(originPos: Vector3)
 end
 
 local function spawnBrainrotModel(brainrotId: string, position: Vector3, facing: CFrame)
-	local template = BrainrotModelsFolder:FindFirstChild(brainrotId)
+	local lookupName = getModelLookupName(brainrotId)
+	local template = BrainrotModelsFolder:FindFirstChild(lookupName)
 	local model: Model
 	if template and template:IsA("Model") then
 		model = template:Clone()
@@ -635,7 +643,8 @@ local function showCaughtPopup(brainrotId: string, displayName: string?)
 	label.Text = displayName or brainrotId
 	label.Parent = frame
 
-	local template = BrainrotModelsFolder:FindFirstChild(brainrotId)
+	local lookupName = getModelLookupName(brainrotId)
+	local template = BrainrotModelsFolder:FindFirstChild(lookupName)
 	if template and template:IsA("Model") then
 		local model = template:Clone()
 		model.Parent = viewport
@@ -922,8 +931,8 @@ local function createMenuGui()
 
 	local brainrotDetail = Instance.new("TextLabel")
 	brainrotDetail.Name = "BrainrotDetail"
-	brainrotDetail.Size = UDim2.new(0.5, 0, 1, -40)
-	brainrotDetail.Position = UDim2.new(0.48, 0, 0, 40)
+	brainrotDetail.Size = UDim2.new(0.5, 0, 1, -90)
+	brainrotDetail.Position = UDim2.new(0.48, 0, 0, 90)
 	brainrotDetail.BackgroundTransparency = 1
 	brainrotDetail.TextColor3 = Color3.new(1, 1, 1)
 	brainrotDetail.Font = Enum.Font.Gotham
@@ -1072,7 +1081,8 @@ local function createMenuGui()
 				child:Destroy()
 			end
 
-			local template = BrainrotModelsFolder:FindFirstChild(monId)
+			local lookupName = getModelLookupName(monId)
+			local template = BrainrotModelsFolder:FindFirstChild(lookupName)
 			if not template or not template:IsA("Model") then
 				return
 			end
