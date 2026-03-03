@@ -820,6 +820,7 @@ local function createMenuGui()
 	local trainerButton = createTabButton("TrainerButton", "Trainer Card")
 	local dexButton = createTabButton("DexButton", "Troppi-dex")
 	local settingsButton = createTabButton("SettingsButton", "Settings")
+	local friendsButton = createTabButton("FriendsButton", "Friends")
 	local brainrotsButton = createTabButton("BrainrotsButton", "Brainrots")
 	local pcButton = createTabButton("PCButton", "PC / Boxes")
 
@@ -998,6 +999,28 @@ local function createMenuGui()
 	settingsFrame.BackgroundTransparency = 1
 	settingsFrame.Visible = false
 	settingsFrame.Parent = contentBody
+
+	local friendsFrame = Instance.new("Frame")
+	friendsFrame.Name = "FriendsFrame"
+	friendsFrame.Size = UDim2.new(1, 0, 1, 0)
+	friendsFrame.BackgroundTransparency = 1
+	friendsFrame.Visible = false
+	friendsFrame.Parent = contentBody
+
+	local friendsList = Instance.new("ScrollingFrame")
+	friendsList.Name = "FriendsList"
+	friendsList.Size = UDim2.new(1, 0, 1, 0)
+	friendsList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	friendsList.BackgroundTransparency = 1
+	friendsList.ScrollBarThickness = 4
+	friendsList.Parent = friendsFrame
+
+	local friendsLayout = Instance.new("UIListLayout")
+	friendsLayout.FillDirection = Enum.FillDirection.Vertical
+	friendsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	friendsLayout.VerticalAlignment = Enum.VerticalAlignment.Top
+	friendsLayout.Padding = UDim.new(0, 4)
+	friendsLayout.Parent = friendsList
 
 	local settingsLabel = Instance.new("TextLabel")
 	settingsLabel.Name = "SettingsLabel"
@@ -1253,6 +1276,7 @@ local function createMenuGui()
 		trainerFrame.Visible = false
 		dexList.Visible = false
 		settingsFrame.Visible = false
+		friendsFrame.Visible = false
 		brainrotsFrame.Visible = false
 		pcFrame.Visible = false
 	end
@@ -1371,6 +1395,129 @@ local function createMenuGui()
 				label.Text = string.format("%s - %s", id, status)
 				label.Parent = dexList
 			end
+		end
+
+		local function rebuildFriends()
+			clearChildren(friendsList)
+			friendsLayout.Parent = friendsList
+
+			local loadingLabel = Instance.new("TextLabel")
+			loadingLabel.Size = UDim2.new(1, -4, 0, 20)
+			loadingLabel.BackgroundTransparency = 1
+			loadingLabel.TextColor3 = Color3.fromRGB(180, 180, 200)
+			loadingLabel.Font = Enum.Font.Gotham
+			loadingLabel.TextSize = 14
+			loadingLabel.TextXAlignment = Enum.TextXAlignment.Left
+			loadingLabel.Text = "Loading friends..."
+			loadingLabel.Parent = friendsList
+
+			task.spawn(function()
+				local friendRows = {}
+				local ok, pages = pcall(function()
+					return Players:GetFriendsAsync(LocalPlayer.UserId)
+				end)
+				if not ok or not pages then
+					local err = Instance.new("TextLabel")
+					err.Size = UDim2.new(1, -4, 0, 20)
+					err.BackgroundTransparency = 1
+					err.TextColor3 = Color3.fromRGB(255, 160, 160)
+					err.Font = Enum.Font.Gotham
+					err.TextSize = 14
+					err.TextXAlignment = Enum.TextXAlignment.Left
+					err.Text = "Could not load friends."
+					err.Parent = friendsList
+					friendsList.CanvasSize = UDim2.new(0, 0, 0, 24)
+					return
+				end
+
+				repeat
+					for _, friend in ipairs(pages:GetCurrentPage()) do
+						table.insert(friendRows, friend)
+					end
+					if pages.IsFinished then
+						break
+					end
+					local ok = pcall(function()
+						pages:AdvanceToNextPageAsync()
+					end)
+					if not ok then
+						break
+					end
+				until false
+
+				clearChildren(friendsList)
+				friendsLayout.Parent = friendsList
+
+				if #friendRows == 0 then
+					local empty = Instance.new("TextLabel")
+					empty.Size = UDim2.new(1, -4, 0, 20)
+					empty.BackgroundTransparency = 1
+					empty.TextColor3 = Color3.fromRGB(180, 180, 200)
+					empty.Font = Enum.Font.Gotham
+					empty.TextSize = 14
+					empty.TextXAlignment = Enum.TextXAlignment.Left
+					empty.Text = "No friends yet."
+					empty.Parent = friendsList
+					friendsList.CanvasSize = UDim2.new(0, 0, 0, 24)
+					return
+				end
+
+				for _, friend in ipairs(friendRows) do
+					local row = Instance.new("Frame")
+					row.Size = UDim2.new(1, -4, 0, 36)
+					row.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+					row.Parent = friendsList
+
+					local rowCorner = Instance.new("UICorner")
+					rowCorner.CornerRadius = UDim.new(0, 6)
+					rowCorner.Parent = row
+
+					local statusColor = friend.IsOnline and Color3.fromRGB(80, 220, 80) or Color3.fromRGB(120, 120, 120)
+					local statusLabel = Instance.new("TextLabel")
+					statusLabel.Size = UDim2.new(0, 12, 0, 12)
+					statusLabel.Position = UDim2.new(0, 8, 0.5, -6)
+					statusLabel.BackgroundColor3 = statusColor
+					statusLabel.BorderSizePixel = 0
+					statusLabel.Parent = row
+
+					local statusCorner = Instance.new("UICorner")
+					statusCorner.CornerRadius = UDim.new(1, 0)
+					statusCorner.Parent = statusLabel
+
+					local nameLabel = Instance.new("TextLabel")
+					nameLabel.Size = UDim2.new(1, -140, 1, 0)
+					nameLabel.Position = UDim2.new(0, 24, 0, 0)
+					nameLabel.BackgroundTransparency = 1
+					nameLabel.TextColor3 = Color3.new(1, 1, 1)
+					nameLabel.Font = Enum.Font.Gotham
+					nameLabel.TextSize = 14
+					nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+					nameLabel.Text = friend.Username .. (friend.IsOnline and " (online)" or " (offline)")
+					nameLabel.Parent = row
+
+					local inviteBtn = Instance.new("TextButton")
+					inviteBtn.Size = UDim2.new(0, 80, 0, 24)
+					inviteBtn.Position = UDim2.new(1, -88, 0.5, -12)
+					inviteBtn.BackgroundColor3 = Color3.fromRGB(50, 70, 50)
+					inviteBtn.TextColor3 = Color3.new(1, 1, 1)
+					inviteBtn.Font = Enum.Font.GothamBold
+					inviteBtn.TextSize = 12
+					inviteBtn.Text = "Invite"
+					inviteBtn.Parent = row
+
+					local inviteCorner = Instance.new("UICorner")
+					inviteCorner.CornerRadius = UDim.new(0, 6)
+					inviteCorner.Parent = inviteBtn
+
+					inviteBtn.MouseButton1Click:Connect(function()
+						if friend.IsOnline then
+							-- Placeholder: battle invite would fire a RemoteEvent here
+						end
+					end)
+				end
+
+				friendsList.CanvasSize = UDim2.new(0, 0, 0, #friendRows * 40)
+			end)
 		end
 
 		local function setupBrainrotIcon(viewport: ViewportFrame, monId: string)
@@ -1602,6 +1749,7 @@ local function createMenuGui()
 		rebuildBag()
 		rebuildTrainerCard()
 		rebuildDex()
+		rebuildFriends()
 		rebuildBrainrots()
 		rebuildPC()
 	end
@@ -1625,6 +1773,9 @@ local function createMenuGui()
 		elseif section == "settings" then
 			contentLabel.Text = "Settings"
 			settingsFrame.Visible = true
+		elseif section == "friends" then
+			contentLabel.Text = "Friends"
+			friendsFrame.Visible = true
 		elseif section == "brainrots" then
 			contentLabel.Text = "Brainrots"
 			brainrotsFrame.Visible = true
@@ -1654,6 +1805,10 @@ local function createMenuGui()
 
 	settingsButton.MouseButton1Click:Connect(function()
 		openSection("settings")
+	end)
+
+	friendsButton.MouseButton1Click:Connect(function()
+		openSection("friends")
 	end)
 
 	brainrotsButton.MouseButton1Click:Connect(function()
